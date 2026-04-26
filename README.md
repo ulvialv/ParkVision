@@ -11,7 +11,6 @@ AzParking Smart, Bakı şəhərində mövcud AzParking sisteminə inteqrasiya ed
 - **🗺️ Real Leaflet Xəritəsi** – Bakı küçə şəbəkəsi (OpenStreetMap), `flyTo` animasiyası, slot markerləri.
 - **🅿️ Horizontal Slot Strip** – Boş/Dolu/Seçilmiş/Reserved – avtomatik scroll-into-view.
 - **🚗 Waze Deep Link** – `https://waze.com/ul?ll=...&navigate=yes` formatı ilə yeni tabda naviqasiya.
-- **📍 Yaxınlaşma Modu** – "500m-dəyəm" simulyasiyası → konfetti animasiya ilə "Park ET".
 
 ## 🛠️ Stack
 
