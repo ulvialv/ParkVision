@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0F4C3A" />
+    <title>AzParking Smart – AI Park Sistemi</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Leaflet (xəritə üçün) -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'az-primary': '#0F4C3A',
+              'az-primary-dark': '#0A3528',
+              'az-primary-light': '#1B6B53',
+              'az-available': '#16A34A',
+              'az-available-light': '#22C55E',
+              'az-available-bg': '#DCFCE7',
+              'az-occupied': '#9CA3AF',
+              'az-occupied-light': '#D1D5DB',
+              'az-occupied-bg': '#F3F4F6',
+              'az-selected': '#DC2626',
+              'az-waze': '#05C8F7',
+              'az-bg': '#F0F4F0',
+              'az-card': '#FFFFFF',
+              'az-reserved': '#F59E0B',
+              'az-ink': '#0B1F2A',
+              'az-ink-soft': '#475569',
+            },
+            fontFamily: {
+              display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+              body: ['Inter', 'system-ui', 'sans-serif'],
+            },
+            boxShadow: {
+              'card': '0 4px 16px -4px rgba(15, 76, 58, 0.12), 0 2px 6px -2px rgba(15, 76, 58, 0.06)',
+              'card-hover': '0 12px 28px -8px rgba(15, 76, 58, 0.22), 0 4px 10px -2px rgba(15, 76, 58, 0.08)',
+              'glow-green': '0 0 0 4px rgba(22, 163, 74, 0.18), 0 8px 24px -4px rgba(22, 163, 74, 0.45)',
+            },
+            keyframes: {
+              pulseSlot: {
+                '0%, 100%': { boxShadow: '0 0 0 0 rgba(22, 163, 74, 0.7)' },
+                '50%': { boxShadow: '0 0 0 14px rgba(22, 163, 74, 0)' },
+              },
+              shimmer: {
+                '0%': { backgroundPosition: '-1000px 0' },
+                '100%': { backgroundPosition: '1000px 0' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(8px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(40px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              confettiFall: {
+                '0%': { transform: 'translate3d(0,-10vh,0) rotate(0deg)', opacity: '1' },
+                '100%': { transform: 'translate3d(0,110vh,0) rotate(720deg)', opacity: '0.2' },
+              },
+              haloPulse: {
+                '0%, 100%': { transform: 'scale(1)', opacity: '0.55' },
+                '50%': { transform: 'scale(1.35)', opacity: '0' },
+              },
+              progressFill: {
+                '0%': { width: '0%' },
+                '100%': { width: '100%' },
+              },
+              floatY: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-6px)' },
+              },
+              softPulse: {
+                '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+                '50%': { transform: 'scale(1.06)', opacity: '0.92' },
+              },
+            },
+            animation: {
+              'pulse-slot': 'pulseSlot 1.6s ease-in-out infinite',
+              'shimmer': 'shimmer 1.6s linear infinite',
+              'fade-in': 'fadeIn 0.45s ease-out both',
+              'slide-up': 'slideUp 0.36s cubic-bezier(0.22, 1, 0.36, 1) both',
+              'confetti': 'confettiFall 3s linear forwards',
+              'halo': 'haloPulse 1.8s ease-out infinite',
+              'progress': 'progressFill 1.9s ease-out forwards',
+              'float-y': 'floatY 3s ease-in-out infinite',
+              'soft-pulse': 'softPulse 1.6s ease-in-out infinite',
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', system-ui, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-font-smoothing: antialiased;
+        overscroll-behavior-y: none;
+        background: #e2e8f0;
+      }
+      .font-display {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .leaflet-container {
+        font-family: 'Inter', sans-serif;
+        background: #e9efe6 !important;
+      }
+      .leaflet-control-attribution {
+        font-size: 9px !important;
+        background: rgba(255, 255, 255, 0.7) !important;
+      }
+      .az-marker,
+      .az-zone-marker,
+      .az-user-marker {
+        background: transparent !important;
+        border: none !important;
+      }
+      /* Live user location pulse */
+      @keyframes azUserPulse {
+        0%   { transform: scale(0.6); opacity: 0.55; }
+        70%  { transform: scale(1.4); opacity: 0; }
+        100% { transform: scale(1.4); opacity: 0; }
+      }
+      /* Nearest-slot ring (used both inside zone-detail map and full-page map) */
+      @keyframes azNearestRing {
+        0%, 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(59,130,246,.45); }
+        50%      { box-shadow: 0 0 0 4px #fff, 0 0 0 9px rgba(59,130,246,.18); }
+      }
+      .shimmer-bg {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.55) 50%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        background-size: 1000px 100%;
+      }
+      /* Hide Leaflet zoom on mobile look */
+      .leaflet-touch .leaflet-bar a {
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        border-radius: 6px;
+      }
+      /* Smooth fly transition feel */
+      .leaflet-fade-anim .leaflet-tile,
+      .leaflet-zoom-anim .leaflet-zoom-animated {
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-200 font-body">
+    <div id="root"></div>
+
+    <!-- Global error filter — keeps transient/harmless Leaflet animation
+         errors from bubbling up as red console noise. -->
+    <script>
+      (function () {
+        function asString(e) {
+          if (!e) return '';
+          if (typeof e === 'string') return e;
+          if (e.error) return asString(e.error);
+          if (e.reason) return asString(e.reason);
+          return (e.message || '') + (e.stack ? '\n' + e.stack : '');
+        }
+        function isIgnorable(info) {
+          if (!info) return false;
+          var s = String(info);
+          return (
+            s.indexOf('_leaflet_pos') !== -1 ||
+            s.indexOf('Set map center and zoom first') !== -1 ||
+            (s.indexOf('leaflet') !== -1 && s.indexOf('undefined') !== -1)
+          );
+        }
+        window.addEventListener('error', function (e) {
+          if (isIgnorable(asString(e)) || isIgnorable(e && e.filename)) {
+            e.preventDefault();
+            e.stopImmediatePropagation && e.stopImmediatePropagation();
+          }
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          if (isIgnorable(asString(e))) {
+            e.preventDefault();
+          }
+        });
+      })();
+    </script>
+
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

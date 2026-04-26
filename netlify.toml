@@ -1,0 +1,11 @@
+# AzParking Smart — statik deploy (build YOXDUR, standalone.html birbasa serve olunur)
+[build]
+  command = "mkdir -p public && cp standalone.html public/index.html"
+  publish = "public"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

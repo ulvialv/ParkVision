@@ -1,0 +1,2425 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#0F4C3A" />
+  <title>AzParking Smart – AI Park Sistemi</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'az-primary':'#0F4C3A','az-primary-dark':'#0A3528','az-primary-light':'#1B6B53',
+            'az-available':'#16A34A','az-available-light':'#22C55E','az-available-bg':'#DCFCE7',
+            'az-occupied':'#9CA3AF','az-occupied-light':'#D1D5DB','az-occupied-bg':'#F3F4F6',
+            'az-selected':'#DC2626','az-waze':'#05C8F7','az-bg':'#F0F4F0','az-card':'#FFFFFF',
+            'az-reserved':'#F59E0B','az-ink':'#0B1F2A','az-ink-soft':'#475569',
+          },
+          fontFamily: {
+            display: ['"Plus Jakarta Sans"','system-ui','sans-serif'],
+            body: ['Inter','system-ui','sans-serif'],
+          },
+          boxShadow: {
+            card:'0 4px 16px -4px rgba(15,76,58,.12),0 2px 6px -2px rgba(15,76,58,.06)',
+            'card-hover':'0 12px 28px -8px rgba(15,76,58,.22),0 4px 10px -2px rgba(15,76,58,.08)',
+            'glow-green':'0 0 0 4px rgba(22,163,74,.18),0 8px 24px -4px rgba(22,163,74,.45)',
+          },
+          keyframes: {
+            pulseSlot:{'0%,100%':{boxShadow:'0 0 0 0 rgba(22,163,74,0.7)'},'50%':{boxShadow:'0 0 0 14px rgba(22,163,74,0)'}},
+            shimmer:{'0%':{backgroundPosition:'-1000px 0'},'100%':{backgroundPosition:'1000px 0'}},
+            fadeIn:{'0%':{opacity:'0',transform:'translateY(8px)'},'100%':{opacity:'1',transform:'translateY(0)'}},
+            slideUp:{'0%':{opacity:'0',transform:'translateY(40px)'},'100%':{opacity:'1',transform:'translateY(0)'}},
+            confettiFall:{'0%':{transform:'translate3d(0,-10vh,0) rotate(0)',opacity:'1'},'100%':{transform:'translate3d(0,110vh,0) rotate(720deg)',opacity:'.2'}},
+            haloPulse:{'0%,100%':{transform:'scale(1)',opacity:'.55'},'50%':{transform:'scale(1.35)',opacity:'0'}},
+            progressFill:{'0%':{width:'0%'},'100%':{width:'100%'}},
+            softPulse:{'0%,100%':{transform:'scale(1)',opacity:'1'},'50%':{transform:'scale(1.06)',opacity:'.92'}},
+          },
+          animation: {
+            'pulse-slot':'pulseSlot 1.6s ease-in-out infinite',
+            shimmer:'shimmer 1.6s linear infinite',
+            'fade-in':'fadeIn .45s ease-out both',
+            'slide-up':'slideUp .36s cubic-bezier(.22,1,.36,1) both',
+            confetti:'confettiFall 3s linear forwards',
+            halo:'haloPulse 1.8s ease-out infinite',
+            progress:'progressFill 1.9s ease-out forwards',
+            'soft-pulse':'softPulse 1.6s ease-in-out infinite',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html,body,#root{height:100%}
+    html,body{margin:0;padding:0;font-family:'Inter',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;background:#e2e8f0}
+    .font-display{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+    .scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
+    .leaflet-container{font-family:'Inter',sans-serif;background:#e9efe6 !important}
+    .leaflet-control-attribution{font-size:9px !important;background:rgba(255,255,255,.7) !important}
+    .az-marker{background:transparent !important;border:none !important}
+    .shimmer-bg{background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 100%);background-size:1000px 100%}
+    .leaflet-touch .leaflet-bar a{width:28px;height:28px;line-height:28px;border-radius:6px}
+    @keyframes confettiFall{0%{transform:translate3d(0,-10vh,0) rotate(0);opacity:1}100%{transform:translate3d(0,110vh,0) rotate(720deg);opacity:.2}}
+    @keyframes fadeIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+    .splash-loader{display:none}
+    /* Show simple loader while React is loading */
+    .pre-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0F4C3A;color:#fff;font-family:'Plus Jakarta Sans';flex-direction:column;gap:16px;z-index:1000}
+    .pre-loader .p{width:64px;height:64px;border-radius:18px;background:#fff;color:#0F4C3A;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;animation:softPulse 1.4s ease-in-out infinite}
+    @keyframes softPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    @keyframes azUserPulse{0%{transform:scale(.6);opacity:.65}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}
+    @keyframes azNearestRing{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.45)}50%{box-shadow:0 0 0 8px rgba(59,130,246,0)}}
+    .az-user-marker{background:transparent !important;border:none !important}
+  </style>
+
+  <!-- Module resolution map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+      "react-dom": "https://esm.sh/react-dom@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+      "lucide-react": "https://esm.sh/lucide-react@0.453.0?external=react&bundle"
+    }
+  }
+  </script>
+
+  <!-- Babel for in-browser JSX transform -->
+  <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+</head>
+<body class="bg-slate-200 font-body">
+  <div class="pre-loader" id="pre-loader">
+    <div class="p">P</div>
+    <div style="font-size:13px;letter-spacing:.2em;opacity:.7">YÜKLƏNİR…</div>
+  </div>
+  <div id="root"></div>
+
+  <!-- Global error overlay so we never end up on a silent white screen -->
+  <div id="err-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f172a;color:#fca5a5;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;padding:24px;overflow:auto;white-space:pre-wrap"></div>
+  <script>
+    (function () {
+      function show(label, info) {
+        var el = document.getElementById('err-overlay');
+        var pl = document.getElementById('pre-loader');
+        if (pl) pl.style.display = 'none';
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent += '── ' + label + ' ─────────────────────────\n' + info + '\n\n';
+      }
+      function fmt(e) {
+        if (!e) return 'undefined';
+        if (typeof e === 'string') return e;
+        if (e.error)   return fmt(e.error);
+        if (e.reason)  return fmt(e.reason);
+        if (e.message) return (e.message || '') + (e.stack ? '\n' + e.stack : '');
+        try { return JSON.stringify(e, Object.getOwnPropertyNames(e), 2); } catch (_) { return String(e); }
+      }
+      // Errors we deliberately swallow — transient + harmless, the app
+      // recovers on its own and forcing the user onto a red overlay is
+      // far worse than letting them keep tapping.
+      function isIgnorable(info) {
+        if (!info) return false;
+        var s = String(info);
+        return (
+          s.indexOf('_leaflet_pos') !== -1 ||                       // zoom-after-unmount
+          s.indexOf('Set map center and zoom first') !== -1 ||      // map removed mid-animation
+          (s.indexOf('leaflet') !== -1 && s.indexOf('undefined') !== -1)
+        );
+      }
+      window.addEventListener('error', function (e) {
+        var msg = fmt(e);
+        if (isIgnorable(msg) || isIgnorable(e && e.filename)) return;
+        show('window.onerror @ ' + (e.filename||'?') + ':' + (e.lineno||'?'), msg);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var msg = fmt(e);
+        if (isIgnorable(msg)) return;
+        show('unhandledrejection', msg);
+      });
+    })();
+  </script>
+
+  <script type="text/babel" data-type="module" data-presets="react">
+    import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import {
+      Bell, Search, Accessibility, Sparkles, Crown, Clock, MapPin, ArrowRight,
+      Wallet, Car, ChevronLeft, ChevronRight, RefreshCw, Navigation, Lock, Target, X,
+      Map as MapIconLR, User, Plus, CreditCard, Check, MoreHorizontal
+    } from 'lucide-react';
+
+    /* =================================================================
+       AzParking Smart – Single-file React implementation
+       Splash → Home → Zone Detail → Proximity (overlay)
+       Real Baku coordinates · Leaflet · Isometric SVG · Claude AI · Waze
+       ================================================================= */
+
+    // ── MOCK DATA ───────────────────────────────────────────────────
+    // `heading` = compass bearing of the street (deg from north, clockwise).
+    // Slots are projected along that vector and *centered* on the zone
+    // coordinate so pins follow the kerb instead of crossing buildings.
+    // `pricePerHour` is in AZN.
+    const MOCK_ZONES = [
+      // ─── MƏRKƏZ / Səbail ─────────────────────────────────────
+      { id:'P10101', name:'Fəvvarələr Meydanı - Nizami küç.', code:'P10101',
+        coordinates:{lat:40.3725,lng:49.8389}, heading:95,
+        totalSlots:180, availableSlots:24,
+        pricePerHour:1.5, isAccessible:true, distance:120, sectors:['A','B'],
+        visualSlots:30, visualAvailable:[3,7,12,18,22,27] },
+      { id:'P10208', name:'İçərişəhər - Qala divarları', code:'P10208',
+        coordinates:{lat:40.3656,lng:49.8350}, heading:70,
+        totalSlots:45, availableSlots:8,
+        pricePerHour:2.0, isAccessible:false, distance:340, sectors:['A'],
+        visualSlots:15, visualAvailable:[2,5,9,13] },
+      { id:'P10312', name:'Sahil Bulvarı - Mərkəzi giriş', code:'P10312',
+        coordinates:{lat:40.3670,lng:49.8410}, heading:88,
+        totalSlots:320, availableSlots:95,
+        pricePerHour:1.0, isAccessible:true, distance:260, sectors:['A','B','C','D'],
+        visualSlots:36, visualAvailable:[1,4,8,12,15,19,22,26,29,32,35] },
+      { id:'P10455', name:'28 May metro - Tbilisi pr.', code:'P10455',
+        coordinates:{lat:40.3789,lng:49.8489}, heading:10,
+        totalSlots:95, availableSlots:22,
+        pricePerHour:1.2, isAccessible:false, distance:210, sectors:['A','B'],
+        visualSlots:22, visualAvailable:[2,6,10,14,18,21] },
+      { id:'P10520', name:'Port Baku Mall - Neftçilər pr.', code:'P10520',
+        coordinates:{lat:40.3717,lng:49.8497}, heading:90,
+        totalSlots:380, availableSlots:88,
+        pricePerHour:2.0, isAccessible:true, distance:380, sectors:['A','B','C'],
+        visualSlots:30, visualAvailable:[2,5,9,13,17,21,24,27] },
+
+      // ─── ATATÜRK / Yasamal axisi ────────────────────────────
+      { id:'P10742', name:'Atatürk pr. - Mərkəzi xətt', code:'P10742',
+        coordinates:{lat:40.3777,lng:49.8533}, heading:95,
+        totalSlots:267, availableSlots:61,
+        pricePerHour:1.0, isAccessible:false, distance:540, sectors:['A','B','C'],
+        visualSlots:42, visualAvailable:[3,8,12,17,21,26,30,35,38] },
+      { id:'P10808', name:'Yasamal - Şərifzadə küç.', code:'P10808',
+        coordinates:{lat:40.3917,lng:49.8200}, heading:105,
+        totalSlots:88, availableSlots:19,
+        pricePerHour:0.8, isAccessible:false, distance:1820, sectors:['A','B'],
+        visualSlots:22, visualAvailable:[2,5,9,12,15] },
+      { id:'P10912', name:'Memar Əcəmi metro', code:'P10912',
+        coordinates:{lat:40.4036,lng:49.8169}, heading:100,
+        totalSlots:130, availableSlots:40,
+        pricePerHour:0.8, isAccessible:true, distance:2640, sectors:['A','B'],
+        visualSlots:25, visualAvailable:[1,4,7,11,14,18,22] },
+
+      // ─── ŞİMAL ─────────────────────────────────────────────
+      { id:'P11045', name:'20 Yanvar metro', code:'P11045',
+        coordinates:{lat:40.4083,lng:49.8194}, heading:10,
+        totalSlots:165, availableSlots:28,
+        pricePerHour:0.8, isAccessible:false, distance:3010, sectors:['A','B'],
+        visualSlots:28, visualAvailable:[3,7,11,16,20,24] },
+      { id:'P11108', name:'Genclik Mall - Hüsü Hacıyev', code:'P11108',
+        coordinates:{lat:40.4039,lng:49.8503}, heading:70,
+        totalSlots:520, availableSlots:140,
+        pricePerHour:1.2, isAccessible:true, distance:2740, sectors:['A','B','C','D'],
+        visualSlots:36, visualAvailable:[1,4,7,11,14,17,20,23,26,29,32,35] },
+      { id:'P11220', name:'Koroğlu metro - Zığ şossesi', code:'P11220',
+        coordinates:{lat:40.4036,lng:49.9111}, heading:95,
+        totalSlots:95, availableSlots:35,
+        pricePerHour:0.7, isAccessible:false, distance:5680, sectors:['A','B'],
+        visualSlots:22, visualAvailable:[2,5,8,12,15,18,21] },
+
+      // ─── ŞƏRQ / Xətai ──────────────────────────────────────
+      { id:'P11354', name:'Xətai - 8 Noyabr pr.', code:'P11354',
+        coordinates:{lat:40.3911,lng:49.9019}, heading:100,
+        totalSlots:75, availableSlots:12,
+        pricePerHour:0.7, isAccessible:false, distance:5210, sectors:['A','B'],
+        visualSlots:20, visualAvailable:[3,7,11,15] },
+      { id:'P11488', name:'Heydər Əliyev Sarayı - Nərimanov', code:'P11488',
+        coordinates:{lat:40.3939,lng:49.8775}, heading:5,
+        totalSlots:240, availableSlots:67,
+        pricePerHour:1.0, isAccessible:true, distance:3580, sectors:['A','B','C'],
+        visualSlots:32, visualAvailable:[2,5,9,13,17,21,25,28,31] },
+
+      // ─── CƏNUB / Bayıl ─────────────────────────────────────
+      { id:'P11622', name:'Bayıl - Bayraq Meydanı', code:'P11622',
+        coordinates:{lat:40.3506,lng:49.8447}, heading:85,
+        totalSlots:200, availableSlots:72,
+        pricePerHour:0.5, isAccessible:false, distance:2410, sectors:['A','B'],
+        visualSlots:28, visualAvailable:[1,4,7,10,13,16,19,22,25,28] },
+      { id:'P11750', name:'Crystal Hall - Milli Park', code:'P11750',
+        coordinates:{lat:40.3464,lng:49.8500}, heading:80,
+        totalSlots:150, availableSlots:50,
+        pricePerHour:0.8, isAccessible:true, distance:2980, sectors:['A','B'],
+        visualSlots:24, visualAvailable:[2,5,8,11,15,18,21,23] },
+      { id:'P11890', name:'Səbail - Hyatt Regency', code:'P11890',
+        coordinates:{lat:40.3917,lng:49.8156}, heading:15,
+        totalSlots:118, availableSlots:0,
+        pricePerHour:1.5, isAccessible:true, distance:1990, sectors:['A','B'],
+        visualSlots:22, visualAvailable:[] },
+    ];
+
+    // ~5 m between adjacent kerb-side stalls is realistic for a sedan.
+    const SLOT_SPACING_M = 5.2;
+    const M_PER_DEG_LAT  = 111_111;
+
+    function generateSlots(zoneId, count, availableList, baseLat, baseLng, headingDeg = 90) {
+      // Project a centered line of slots along the street's heading vector.
+      const headingRad = (headingDeg * Math.PI) / 180;
+      const dN_per_step = Math.cos(headingRad) * SLOT_SPACING_M;   // metres north / step
+      const dE_per_step = Math.sin(headingRad) * SLOT_SPACING_M;   // metres east  / step
+      const mPerDegLng  = M_PER_DEG_LAT * Math.cos((baseLat * Math.PI) / 180);
+      const half        = (count - 1) / 2;
+
+      return Array.from({length: count}, (_, i) => {
+        const slotNumber = i + 1;
+        const isAvailable = availableList.includes(slotNumber);
+        // Distance from zone centre, in steps (negative on one side, positive on the other).
+        const stepDelta = i - half;
+        const dN = stepDelta * dN_per_step;
+        const dE = stepDelta * dE_per_step;
+        return {
+          id: `${zoneId}-S${String(slotNumber).padStart(3,'0')}`,
+          zoneId, slotNumber,
+          sector: zoneId,
+          status: isAvailable ? 'available' : 'occupied',
+          coordinates: {
+            lat: baseLat + dN / M_PER_DEG_LAT,
+            lng: baseLng + dE / mPerDegLng,
+          },
+          isAccessible: [3,15].includes(slotNumber),
+          lastUpdated: new Date().toISOString(),
+        };
+      });
+    }
+
+    function buildInitialSlots() {
+      const map = {};
+      for (const z of MOCK_ZONES) {
+        map[z.id] = generateSlots(
+          z.id, z.visualSlots, z.visualAvailable,
+          z.coordinates.lat, z.coordinates.lng, z.heading ?? 90
+        );
+      }
+      return map;
+    }
+
+    function refreshSlots(zone) {
+      const total = zone.visualSlots;
+      if (total === 0) return [];
+      const ratio = zone.availableSlots / Math.max(1, zone.totalSlots);
+      const targetAvail = Math.max(0, Math.round(total * ratio));
+      const set = new Set();
+      const seedAvail = [...zone.visualAvailable];
+      while (set.size < targetAvail && set.size < total) {
+        if (seedAvail.length && Math.random() > 0.45) set.add(seedAvail.shift());
+        else set.add(Math.floor(Math.random() * total) + 1);
+      }
+      const slots = generateSlots(
+        zone.id, total, [...set],
+        zone.coordinates.lat, zone.coordinates.lng, zone.heading ?? 90
+      );
+      // If we already pulled the real road geometry for this zone, snap
+      // the regenerated slots back onto it so the refresh doesn't undo
+      // the kerb-side alignment.
+      const cached = ROAD_CACHE.get(zone.id);
+      if (cached) {
+        const positions = placeSlotsAlongRoad(cached, zone.coordinates, total);
+        if (positions) {
+          return slots.map((s, i) => positions[i] ? { ...s, coordinates: positions[i] } : s);
+        }
+      }
+      return slots;
+    }
+
+    // ── ROAD GEOMETRY (Overpass + polyline math) ─────────────────────
+    // Pulls real OSM road geometry near each zone so slot pins land on
+    // the kerb instead of crossing buildings. Cached in-memory.
+    const ROAD_CACHE = new Map(); // zoneId -> { points:[{lat,lng}], perpDist }
+
+    function haversineM(a, b) {
+      const R = 6371000;
+      const lat1 = a.lat * Math.PI / 180;
+      const lat2 = b.lat * Math.PI / 180;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const x = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2)**2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    }
+
+    function localMetres(latRef) {
+      const mLat = M_PER_DEG_LAT;
+      const mLng = M_PER_DEG_LAT * Math.cos(latRef * Math.PI / 180);
+      return { mLat, mLng };
+    }
+
+    // Shortest distance (m) from a point to a single segment a-b.
+    function distPointToSegment(p, a, b) {
+      const { mLat, mLng } = localMetres((a.lat + b.lat) / 2);
+      const ax = (a.lng - p.lng) * mLng, ay = (a.lat - p.lat) * mLat;
+      const bx = (b.lng - p.lng) * mLng, by = (b.lat - p.lat) * mLat;
+      const dx = bx - ax, dy = by - ay;
+      const segLenSq = dx*dx + dy*dy;
+      if (segLenSq < 1e-6) return Math.hypot(ax, ay);
+      let t = -(ax*dx + ay*dy) / segLenSq;
+      t = Math.max(0, Math.min(1, t));
+      const cx = ax + t*dx, cy = ay + t*dy;
+      return Math.hypot(cx, cy);
+    }
+
+    function buildPolyline(points) {
+      const segments = [];
+      let cum = 0;
+      for (let i = 1; i < points.length; i++) {
+        const len = haversineM(points[i-1], points[i]);
+        segments.push({ a: points[i-1], b: points[i], start: cum, end: cum + len, len });
+        cum += len;
+      }
+      return { points, segments, length: cum };
+    }
+
+    function pointAtDistance(poly, dist) {
+      if (!poly.segments.length) return null;
+      if (dist <= 0) {
+        const seg = poly.segments[0];
+        return { lat: seg.a.lat, lng: seg.a.lng, seg };
+      }
+      if (dist >= poly.length) {
+        const seg = poly.segments[poly.segments.length - 1];
+        return { lat: seg.b.lat, lng: seg.b.lng, seg };
+      }
+      for (const seg of poly.segments) {
+        if (dist >= seg.start && dist <= seg.end) {
+          const t = seg.len === 0 ? 0 : (dist - seg.start) / seg.len;
+          return {
+            lat: seg.a.lat + (seg.b.lat - seg.a.lat) * t,
+            lng: seg.a.lng + (seg.b.lng - seg.a.lng) * t,
+            seg,
+          };
+        }
+      }
+      return null;
+    }
+
+    // Distance (along polyline) of the closest projection of `p`.
+    function projectOnPolyline(poly, p) {
+      let bestPerp = Infinity, bestAt = 0;
+      for (const seg of poly.segments) {
+        const { mLat, mLng } = localMetres(seg.a.lat);
+        const bx = (seg.b.lng - seg.a.lng) * mLng;
+        const by = (seg.b.lat - seg.a.lat) * mLat;
+        const px = (p.lng - seg.a.lng) * mLng;
+        const py = (p.lat - seg.a.lat) * mLat;
+        const segLenSq = bx*bx + by*by;
+        let t = segLenSq < 1e-6 ? 0 : (px*bx + py*by) / segLenSq;
+        t = Math.max(0, Math.min(1, t));
+        const cx = t*bx, cy = t*by;
+        const perp = Math.hypot(px - cx, py - cy);
+        if (perp < bestPerp) { bestPerp = perp; bestAt = seg.start + t * seg.len; }
+      }
+      return { dist: bestAt, perpDist: bestPerp };
+    }
+
+    // Distribute `count` slot positions along the polyline, centered on
+    // `anchor` (the zone coordinate), offset to the kerb.
+    function placeSlotsAlongRoad(road, anchor, count, kerbOffsetM = 3.2, spacingM = 5.2) {
+      const poly = buildPolyline(road.points);
+      if (poly.length < spacingM) return null;
+      const proj = projectOnPolyline(poly, anchor);
+      const half = (count - 1) / 2;
+      const result = [];
+      for (let i = 0; i < count; i++) {
+        let d = proj.dist + (i - half) * spacingM;
+        if (d < 0) d = 0;
+        if (d > poly.length) d = poly.length;
+        const p = pointAtDistance(poly, d);
+        if (!p) { result.push(null); continue; }
+        const { mLat, mLng } = localMetres(p.lat);
+        const dx = (p.seg.b.lng - p.seg.a.lng) * mLng;
+        const dy = (p.seg.b.lat - p.seg.a.lat) * mLat;
+        const len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        // Right-hand perpendicular of forward unit vector (kerb side
+        // for right-hand traffic in Azerbaijan):
+        const offE = uy * kerbOffsetM;
+        const offN = -ux * kerbOffsetM;
+        result.push({
+          lat: p.lat + offN / mLat,
+          lng: p.lng + offE / mLng,
+        });
+      }
+      return result;
+    }
+
+    async function fetchRoadForZone(zone) {
+      if (ROAD_CACHE.has(zone.id)) return ROAD_CACHE.get(zone.id);
+      const { lat, lng } = zone.coordinates;
+      const filter = '[highway~"^(primary|secondary|tertiary|residential|unclassified|trunk|trunk_link|primary_link|secondary_link|tertiary_link|living_street|service|pedestrian)$"]';
+      const query = `[out:json][timeout:10];way(around:60,${lat},${lng})${filter};out geom;`;
+      const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.private.coffee/api/interpreter',
+        'https://overpass.openstreetmap.fr/api/interpreter',
+      ];
+      for (const ep of endpoints) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 9000);
+          const res = await fetch(ep, {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(query),
+            signal: ctrl.signal,
+          });
+          clearTimeout(timer);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const json = await res.json();
+          if (!json.elements || !json.elements.length) throw new Error('no roads');
+          let bestPoints = null, bestPerp = Infinity;
+          for (const w of json.elements) {
+            if (!w.geometry || w.geometry.length < 2) continue;
+            const pts = w.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
+            let minPerp = Infinity;
+            for (let i = 1; i < pts.length; i++) {
+              const d = distPointToSegment({ lat, lng }, pts[i-1], pts[i]);
+              if (d < minPerp) minPerp = d;
+            }
+            if (minPerp < bestPerp) { bestPerp = minPerp; bestPoints = pts; }
+          }
+          if (!bestPoints) throw new Error('no closest road');
+          const data = { points: bestPoints, perpDist: bestPerp };
+          ROAD_CACHE.set(zone.id, data);
+          return data;
+        } catch (e) {
+          // try next endpoint
+        }
+      }
+      return null; // network blocked / offline → keep heading fallback
+    }
+
+    const fmtDistance = (m) => m >= 1000 ? (m/1000).toFixed(1) + ' km' : Math.round(m) + ' m';
+
+    function pickGridCols(n) {
+      if (n <= 4) return Math.max(1, n);
+      if (n <= 12) return 4;
+      if (n <= 24) return 5;
+      if (n <= 36) return 6;
+      return 7;
+    }
+
+    // ── CLAUDE AI INTEGRATION ───────────────────────────────────────
+    const FALLBACK_RECOMMENDATION = {
+      recommendedZoneId:'P10742', recommendedSlotId:'P10742-S031', slotNumber:31,
+      zoneName:'Atatürk pr. - Mərkəzi xətt',
+      reason:'Sizə ən yaxın boş slot P10742-dədir – 540m məsafədə, A sektorunda, Slot 31 boşdur.',
+      distanceMeters:540, walkingTimeMinutes:7,
+    };
+
+    async function fetchAIRecommendation() {
+      const apiKey = (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('ANTHROPIC_API_KEY')) || '';
+      const minDelay = new Promise(r => setTimeout(r, 900));
+      if (!apiKey) { await minDelay; return { ...FALLBACK_RECOMMENDATION, source:'fallback' }; }
+      try {
+        const reqPromise = fetch('https://api.anthropic.com/v1/messages', {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'x-api-key':apiKey,
+            'anthropic-version':'2023-06-01',
+            'anthropic-dangerous-direct-browser-access':'true',
+          },
+          body: JSON.stringify({
+            model:'claude-sonnet-4-20250514', max_tokens:300,
+            system:`Sən AzParking Smart sisteminin AI köməkçisisən.
+İstifadəçinin yaxınlığındakı boş park slotlarına baxaraq ən optimal seçimi tövsiyə edirsən.
+Cavabını YALNIZ bu JSON formatında ver, başqa heç nə yazma:
+{
+  "recommendedZoneId": "P10742",
+  "recommendedSlotId": "P10742-S031",
+  "slotNumber": 31,
+  "zoneName": "Atatürk pr. - Mərkəzi xətt",
+  "reason": "Sizə ən yaxın boş slot P10742-dədir – 540m məsafədə, A sektorunda, Slot 31 boşdur.",
+  "distanceMeters": 540,
+  "walkingTimeMinutes": 7
+}`,
+            messages:[{ role:'user', content:`İstifadəçi Bakıda, Neftçilər Prospekti yaxınlığında yerləşir (lat=40.37700, lng=49.85200).
+Mövcud boş slotlar olan zonalar:
+${JSON.stringify(MOCK_ZONES.filter(z=>z.availableSlots>0).map(z=>({id:z.id,name:z.name,distance:z.distance,availableSlots:z.availableSlots})), null, 2)}
+Ən yaxın və əlverişli slotu tövsiyə et.` }],
+          }),
+        }).then(r => r.json());
+        const [data] = await Promise.all([reqPromise, minDelay]);
+        const text = data?.content?.[0]?.text ?? '';
+        const json = JSON.parse(text.replace(/```json|```/g, '').trim());
+        return { ...json, source:'claude' };
+      } catch (e) {
+        console.warn('[Claude API] fallback used:', e?.message || e);
+        return { ...FALLBACK_RECOMMENDATION, source:'fallback' };
+      }
+    }
+
+    // ── SHARED UI ───────────────────────────────────────────────────
+    function Logo({ size=36, pulse=false }) {
+      return (
+        <div className={`relative flex items-center justify-center rounded-2xl bg-gradient-to-br from-az-primary to-az-primary-dark text-white shadow-lg ${pulse?'animate-soft-pulse':''}`}
+             style={{width:size,height:size}}>
+          <span className="font-display font-extrabold leading-none" style={{fontSize:size*0.55}}>P</span>
+          <span className="absolute -top-1 -right-1 inline-block rounded-full bg-az-available border-2 border-white"
+                style={{width:size*0.3,height:size*0.3}} />
+        </div>
+      );
+    }
+
+    function StatusBar() {
+      return (
+        <div className="flex items-center justify-between px-6 pt-3 pb-1 text-az-ink text-[13px] font-display font-semibold select-none flex-shrink-0">
+          <span>17:48</span>
+          <div className="flex items-center gap-1.5">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor">
+              <rect x="0" y="7" width="3" height="4" rx="0.5"/>
+              <rect x="4.5" y="5" width="3" height="6" rx="0.5"/>
+              <rect x="9" y="2.5" width="3" height="8.5" rx="0.5"/>
+              <rect x="13.5" y="0" width="3" height="11" rx="0.5"/>
+            </svg>
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor">
+              <path d="M7.5 2c2.4 0 4.6.9 6.3 2.4l1.2-1.3C13 1.1 10.4 0 7.5 0S2 1.1 0 3.1l1.2 1.3C2.9 2.9 5.1 2 7.5 2z"/>
+              <path d="M7.5 5c1.5 0 2.9.6 4 1.6l1.2-1.3C11.3 4 9.5 3.2 7.5 3.2S3.7 4 2.3 5.3l1.2 1.3C4.6 5.6 6 5 7.5 5z"/>
+              <path d="M7.5 8c.7 0 1.4.3 1.9.8l1.1-1.2C9.7 6.9 8.6 6.5 7.5 6.5S5.3 6.9 4.5 7.6l1.1 1.2c.5-.5 1.2-.8 1.9-.8z"/>
+              <circle cx="7.5" cy="9.5" r="1"/>
+            </svg>
+            <svg width="26" height="12" viewBox="0 0 26 12" fill="none">
+              <rect x="0.5" y="0.5" width="22" height="11" rx="2.5" stroke="currentColor" opacity="0.4"/>
+              <rect x="2" y="2" width="19" height="8" rx="1.5" fill="currentColor"/>
+              <rect x="23.5" y="4" width="2" height="4" rx="1" fill="currentColor" opacity="0.4"/>
+            </svg>
+          </div>
+        </div>
+      );
+    }
+
+    function PhoneShell({ children }) {
+      return (
+        <div className="min-h-screen w-full bg-slate-200 flex items-center justify-center md:py-6">
+          <div className="relative w-full md:max-w-[430px] bg-az-bg shadow-2xl md:rounded-[36px] overflow-hidden flex flex-col"
+               style={{minHeight:'100vh', height:'100dvh'}}>
+            <StatusBar />
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function NavButton({ label, icon: Icon, active, onClick }) {
+      return (
+        <button onClick={onClick}
+                className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition ${active?'text-az-primary':'text-az-ink-soft hover:text-az-primary/70'}`}>
+          <Icon size={22} strokeWidth={active?2.4:2} />
+          <span className={`text-[10px] font-display ${active?'font-extrabold':'font-semibold'}`}>{label}</span>
+        </button>
+      );
+    }
+
+    function BottomNav({ active, onChange }) {
+      return (
+        <div className="absolute left-0 right-0 bottom-0 z-50 pointer-events-none">
+          <div className="relative pointer-events-auto bg-white/95 backdrop-blur-md border-t border-az-primary/5 shadow-[0_-6px_18px_rgba(15,76,58,0.08)]">
+            <div className="flex h-[68px] pb-[env(safe-area-inset-bottom)] px-2">
+              <NavButton label="Vaxt" icon={Clock} active={active==='vaxt'} onClick={()=>onChange('vaxt')} />
+              <NavButton label="Xəritə" icon={MapIconLR} active={active==='xerite'} onClick={()=>onChange('xerite')} />
+              <div className="flex-1 relative">
+                <div className="absolute -top-7 left-1/2 -translate-x-1/2">
+                  <button onClick={()=>onChange('parking')}
+                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition active:scale-95 ${active==='parking'?'bg-az-available text-white shadow-az-available/40':'bg-az-primary text-white shadow-az-primary/30'}`}
+                          aria-label="Parkinq">
+                    <Plus size={28} strokeWidth={3} />
+                  </button>
+                </div>
+                <div className="absolute bottom-2 left-0 right-0 text-center">
+                  <span className={`text-[10px] font-display ${active==='parking'?'font-extrabold text-az-available':'font-semibold text-az-ink-soft'}`}>Parkinq</span>
+                </div>
+              </div>
+              <NavButton label="Digər" icon={MoreHorizontal} active={active==='diger'} onClick={()=>onChange('diger')} />
+              <NavButton label="Profil" icon={User} active={active==='profil'} onClick={()=>onChange('profil')} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── SPLASH ─────────────────────────────────────────────────────
+    function SplashScreen({ onDone }) {
+      useEffect(() => { const t = setTimeout(onDone, 2100); return () => clearTimeout(t); }, [onDone]);
+      return (
+        <div className="absolute inset-0 bg-gradient-to-br from-az-primary via-az-primary-dark to-[#072B20] text-white flex flex-col items-center justify-center overflow-hidden z-30">
+          <div className="absolute -top-24 -left-16 w-72 h-72 rounded-full bg-az-available/20 blur-3xl"/>
+          <div className="absolute -bottom-32 -right-10 w-80 h-80 rounded-full bg-az-available-light/10 blur-3xl"/>
+          <div className="absolute inset-0 opacity-[0.07]" style={{backgroundImage:'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize:'22px 22px'}}/>
+          <div className="relative z-10 flex flex-col items-center gap-7 animate-fade-in">
+            <div className="relative">
+              <span className="absolute inset-0 rounded-3xl bg-az-available animate-halo"/>
+              <span className="absolute inset-0 rounded-3xl bg-az-available animate-halo" style={{animationDelay:'.5s'}}/>
+              <div className="relative w-24 h-24 rounded-3xl bg-white text-az-primary flex items-center justify-center shadow-2xl">
+                <span className="font-display font-extrabold text-[58px] leading-none">P</span>
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-az-available border-[3px] border-white"/>
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <h1 className="font-display font-extrabold text-3xl tracking-tight">AzParking <span className="text-az-available-light">Smart</span></h1>
+              <p className="text-white/70 text-sm max-w-[280px] mx-auto">AI ilə gücləndirilmiş park sistemi</p>
+            </div>
+            <div className="flex items-center gap-2 text-white/60 text-xs">
+              <Sparkles size={14} className="text-az-available-light"/>
+              <span>Claude AI · Real-vaxt slot xəritəsi</span>
+            </div>
+          </div>
+          <div className="absolute bottom-16 left-10 right-10 h-1 rounded-full bg-white/15 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-az-available-light via-white to-az-available-light animate-progress"/>
+          </div>
+          <p className="absolute bottom-7 text-[11px] text-white/50 tracking-[0.2em] font-medium">BAKI · AZƏRBAYCAN</p>
+        </div>
+      );
+    }
+
+    // ── HOME SUB-COMPONENTS ────────────────────────────────────────
+    function HomeHeader({ accessibilityFilter, setAccessibilityFilter }) {
+      return (
+        <div className="px-5 pt-2 pb-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Logo size={40}/>
+            <div className="leading-tight">
+              <p className="font-display font-extrabold text-az-primary text-[17px]">AzParking</p>
+              <p className="text-[11px] text-az-ink-soft font-medium">Smart Parking</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button aria-label="Əlillik filtri" onClick={()=>setAccessibilityFilter(v=>!v)}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${accessibilityFilter?'bg-az-primary text-white shadow-card':'bg-white text-az-ink-soft hover:text-az-primary'}`}>
+              <Accessibility size={19}/>
+            </button>
+            <button aria-label="Bildirişlər"
+              className="relative w-10 h-10 rounded-xl bg-white text-az-ink-soft hover:text-az-primary transition flex items-center justify-center">
+              <Bell size={19}/>
+              <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-az-selected ring-2 ring-white"/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function SearchBar({ value, onChange }) {
+      return (
+        <div className="px-5 mt-1 flex-shrink-0">
+          <div className="relative">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-az-ink-soft"/>
+            <input value={value} onChange={e=>onChange(e.target.value)} placeholder="Ünvan axtar..."
+              className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-az-ink placeholder:text-az-ink-soft/70 text-[14px] font-medium border border-transparent focus:border-az-primary/30 focus:outline-none shadow-card"/>
+          </div>
+        </div>
+      );
+    }
+
+    function TabBar({ tab, setTab }) {
+      const tabs = [
+        { id:'zones', label:'Məntəqələr' },
+        { id:'recent', label:'Ən son' },
+        { id:'favs', label:'Favoritlər' },
+      ];
+      return (
+        <div className="px-5 mt-3 grid grid-cols-3 gap-2 flex-shrink-0">
+          {tabs.map(t => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                className={`relative h-10 rounded-xl text-[13px] font-display font-bold transition ${active?'bg-az-primary text-white shadow-card':'bg-white text-az-ink-soft hover:text-az-primary'}`}>
+                {t.label}
+                {active && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-az-available"/>}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function AISkeleton() {
+      return (
+        <div className="relative overflow-hidden rounded-2xl p-4 mt-4 mx-5 bg-gradient-to-br from-emerald-50 via-yellow-50 to-emerald-50 border border-emerald-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-200/80 animate-pulse"/>
+            <div className="space-y-1.5">
+              <div className="h-3 w-28 bg-emerald-200/70 rounded animate-pulse"/>
+              <div className="h-2 w-40 bg-emerald-100 rounded animate-pulse"/>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="h-3 w-full bg-emerald-100 rounded animate-pulse"/>
+            <div className="h-3 w-3/4 bg-emerald-100 rounded animate-pulse"/>
+          </div>
+          <div className="mt-3 h-10 w-full bg-emerald-200/60 rounded-xl animate-pulse"/>
+          <div className="absolute inset-0 shimmer-bg animate-shimmer pointer-events-none"/>
+        </div>
+      );
+    }
+
+    function AIRecommendationCard({ aiRec, loading, onGo }) {
+      if (loading) return <AISkeleton/>;
+      if (!aiRec) return null;
+      return (
+        <div className="mx-5 mt-4 relative overflow-hidden rounded-2xl shadow-card animate-fade-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FFF8E1] via-[#E8F8EE] to-[#DCFCE7]"/>
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-30"
+               style={{background:'radial-gradient(circle, rgba(22,163,74,0.5) 0%, transparent 70%)'}}/>
+          <div className="relative p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-az-primary text-white flex items-center justify-center"><Sparkles size={16}/></div>
+                <div className="leading-tight">
+                  <p className="font-display font-extrabold text-az-primary text-[14px] flex items-center gap-1.5">
+                    AI Tövsiyəsi
+                    <span className="px-1.5 py-0.5 rounded-md bg-az-primary text-white text-[9px] uppercase tracking-wider">{aiRec.source==='claude'?'Claude':'Smart'}</span>
+                  </p>
+                  <p className="text-[10.5px] text-az-ink-soft">Sizə ən optimal slot tapıldı</p>
+                </div>
+              </div>
+              <Crown size={18} className="text-az-reserved"/>
+            </div>
+            <p className="text-[13px] leading-snug text-az-ink mb-3 font-medium">{aiRec.reason}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+              <span className="px-2 py-1 rounded-lg bg-white/80 text-az-primary text-[10px] font-bold flex items-center gap-1">
+                <MapPin size={11}/>{fmtDistance(aiRec.distanceMeters)}
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-white/80 text-az-primary text-[10px] font-bold flex items-center gap-1">
+                <Clock size={11}/>{aiRec.walkingTimeMinutes} dəq
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-az-available text-white text-[10px] font-bold">Slot {aiRec.slotNumber}</span>
+            </div>
+            <button onClick={onGo}
+              className="w-full h-11 rounded-xl bg-az-primary hover:bg-az-primary-dark active:scale-[0.98] transition text-white font-display font-bold text-[13px] flex items-center justify-center gap-2 shadow-md">
+              Birbaşa Get <ArrowRight size={16}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function AvailabilityBar({ available, total }) {
+      const ratio = Math.max(0, Math.min(1, available/total));
+      let color = 'bg-az-available';
+      if (ratio < 0.15) color = 'bg-az-selected';
+      else if (ratio < 0.35) color = 'bg-az-reserved';
+      return (
+        <div className="h-1.5 w-full bg-az-occupied-bg rounded-full overflow-hidden">
+          <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{width:`${ratio*100}%`}}/>
+        </div>
+      );
+    }
+
+    function ZoneCard({ zone, onClick, highlighted }) {
+      return (
+        <button onClick={onClick}
+          className={`w-full text-left rounded-2xl bg-white p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0 transition-all border ${highlighted?'border-az-available ring-2 ring-az-available/30':'border-transparent'}`}>
+          <div className="flex items-start justify-between mb-1">
+            <p className="font-display font-extrabold text-az-ink text-[15px] tracking-tight flex items-center gap-1.5">
+              {zone.name}
+              {zone.isAccessible && <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-blue-100 text-blue-600"><Accessibility size={12}/></span>}
+            </p>
+            {highlighted && <span className="text-[9px] uppercase tracking-wider font-extrabold text-az-available bg-az-available-bg px-1.5 py-0.5 rounded">AI</span>}
+          </div>
+          <p className="text-[11.5px] mb-3 flex items-center gap-1">
+            <span className="font-display font-extrabold text-az-available">{zone.code}</span>
+            <span className="text-az-occupied">|</span>
+            <span className="text-az-ink-soft truncate">{zone.name}</span>
+          </p>
+          <div className="flex items-center gap-3 text-[11.5px] font-semibold mb-3 flex-wrap">
+            <span className="flex items-center gap-1 text-az-ink"><MapPin size={13} className="text-az-available"/>{fmtDistance(zone.distance)}</span>
+            <span className="flex items-center gap-1 text-az-ink"><Car size={13} className="text-az-ink-soft"/>{zone.availableSlots}/{zone.totalSlots} slot</span>
+            <span className="flex items-center gap-1 text-az-ink"><Wallet size={13} className="text-az-available"/>{zone.pricePerHour} AZN /saat</span>
+          </div>
+          <AvailabilityBar available={zone.availableSlots} total={zone.totalSlots}/>
+        </button>
+      );
+    }
+
+    function HomeScreen({ zones, searchQuery, setSearchQuery, accessibilityFilter, setAccessibilityFilter, tab, setTab, aiRec, aiLoading, onZoneSelect, onAIGo }) {
+      const filteredZones = useMemo(() => {
+        let list = zones;
+        if (accessibilityFilter) list = list.filter(z=>z.isAccessible);
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          list = list.filter(z => z.name.toLowerCase().includes(q) || z.code.toLowerCase().includes(q));
+        }
+        if (tab==='recent') list = [...list].sort((a,b)=>a.distance-b.distance);
+        if (tab==='favs') list = list.filter(z => z.isAccessible || z.availableSlots > 5);
+        return list;
+      }, [zones, accessibilityFilter, searchQuery, tab]);
+
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <HomeHeader accessibilityFilter={accessibilityFilter} setAccessibilityFilter={setAccessibilityFilter}/>
+          <SearchBar value={searchQuery} onChange={setSearchQuery}/>
+          <TabBar tab={tab} setTab={setTab}/>
+          <div className="flex-1 overflow-y-auto pb-32 scrollbar-hide">
+            <AIRecommendationCard aiRec={aiRec} loading={aiLoading} onGo={onAIGo}/>
+            <div className="mt-4 px-5 space-y-3">
+              {filteredZones.length === 0 && (
+                <div className="text-center py-10 text-az-ink-soft text-sm">Heç bir zona tapılmadı</div>
+              )}
+              {filteredZones.map((z, i) => (
+                <div key={z.id} style={{animationDelay:`${i*60}ms`}} className="animate-fade-in">
+                  <ZoneCard zone={z} highlighted={aiRec?.recommendedZoneId===z.id} onClick={()=>onZoneSelect(z.id)}/>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── SLOT STRIP ─────────────────────────────────────────────────
+    function SlotCard({ slot, isSelected, onClick }) {
+      const base = 'flex-shrink-0 w-[72px] h-[92px] rounded-2xl flex flex-col items-center justify-center font-display font-extrabold transition-all relative';
+      if (slot.status === 'available') {
+        return (
+          <button onClick={onClick}
+            className={`${base} ${isSelected?'bg-az-primary text-white scale-[1.12] shadow-glow-green ring-2 ring-white animate-pulse-slot':'bg-az-available text-white hover:scale-[1.05] shadow-md'}`}>
+            <span className="text-[22px] leading-none">{slot.slotNumber}</span>
+            <span className="text-[9px] mt-1.5 tracking-widest opacity-90">{isSelected?'SİZİN':'BOŞ'}</span>
+            {isSelected && <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-white text-az-primary text-[8px] font-extrabold shadow whitespace-nowrap">🎯 SLOT</span>}
+          </button>
+        );
+      }
+      return (
+        <button disabled className={`${base} bg-az-occupied-bg border-2 border-az-occupied/40 text-az-ink-soft cursor-not-allowed`}>
+          <span className="text-[22px] leading-none">{slot.slotNumber}</span>
+          <span className="text-[9px] mt-1.5 tracking-widest opacity-80">DOLU</span>
+        </button>
+      );
+    }
+
+    function SlotStrip({ slots, selectedId, onSelect }) {
+      const refs = useRef({});
+      useEffect(() => {
+        if (!selectedId) return;
+        const el = refs.current[selectedId];
+        if (el && el.scrollIntoView) {
+          el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+        }
+      }, [selectedId]);
+      return (
+        <div
+          className="overflow-x-auto overflow-y-hidden scrollbar-hide flex gap-2.5 px-5 py-3"
+          style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}
+          onWheel={(e) => {
+            // Allow vertical wheel/trackpad to scroll horizontally inside the strip
+            if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          {slots.map(s => (
+            <div key={s.id} ref={el => refs.current[s.id] = el}>
+              <SlotCard slot={s} isSelected={s.id===selectedId} onClick={s.status==='available'?()=>onSelect(s):undefined}/>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── 3D STREET-SIDE PARK SCHEME (linear, kerb-style) ───────────
+    // Top-down perspective of a city street with parallel parking slots
+    // arranged side by side along the curb. Single horizontal row,
+    // horizontally scrollable. Matches the user's reference photo.
+
+    function CarTopShape({ cx, cy, w, h, color = '#475569' }) {
+      // Top-down silhouette of a parked car (simple, readable).
+      return (
+        <g transform={`translate(${cx-w/2}, ${cy-h/2})`} style={{pointerEvents:'none'}}>
+          {/* body */}
+          <rect x={1.5} y={0} width={w-3} height={h} rx={5.5} fill={color}/>
+          {/* roof highlight */}
+          <rect x={3} y={h*0.18} width={w-6} height={h*0.28} rx={2} fill="#1F2937" opacity="0.55"/>
+          <rect x={3} y={h*0.54} width={w-6} height={h*0.28} rx={2} fill="#1F2937" opacity="0.55"/>
+          {/* windshield gleam */}
+          <rect x={4} y={h*0.21} width={w-8} height={h*0.05} fill="#94A3B8" opacity="0.7"/>
+          <rect x={4} y={h*0.74} width={w-8} height={h*0.05} fill="#94A3B8" opacity="0.7"/>
+          {/* mirrors */}
+          <rect x={-0.5} y={h*0.36} width={2} height={3} rx={1} fill={color}/>
+          <rect x={w-1.5} y={h*0.36} width={2} height={3} rx={1} fill={color}/>
+        </g>
+      );
+    }
+
+    function StreetSlot({ slot, x, W, H, isSelected, onClick }) {
+      const isAvail = slot.status === 'available';
+      // Slot tinting
+      const fill   = isAvail ? (isSelected ? '#16A34A' : '#86EFAC') : '#E5E7EB';
+      const stroke = isAvail ? (isSelected ? '#0F4C3A' : '#22C55E') : '#9CA3AF';
+      const strokeW = isSelected ? 3 : 1.5;
+      const carColor = ['#475569', '#1E40AF', '#7F1D1D', '#0F172A', '#374151'][slot.slotNumber % 5];
+
+      return (
+        <g transform={`translate(${x}, 0)`}
+           style={{cursor: isAvail ? 'pointer' : 'not-allowed'}}
+           onClick={isAvail ? onClick : undefined}>
+          {/* selected outer halo */}
+          {isSelected && (
+            <rect x={-4} y={-4} width={W+8} height={H+8} rx={9}
+                  fill="none" stroke="#16A34A" strokeWidth={2}
+                  opacity={0.55} className="animate-halo"/>
+          )}
+          {/* slot body */}
+          <rect width={W} height={H} rx={5} fill={fill}
+                stroke={stroke} strokeWidth={strokeW}/>
+          {/* white parking lines (left & right edges) — like real road markings */}
+          <rect x={1.5} y={3} width={1.5} height={H-6} fill="#FFFFFF" opacity={0.85}/>
+          <rect x={W-3}  y={3} width={1.5} height={H-6} fill="#FFFFFF" opacity={0.85}/>
+          {/* curb hint (top edge thin yellow line where road meets slots) */}
+          <rect x={0} y={0} width={W} height={2} fill="#FBBF24" opacity={0.55}/>
+
+          {/* occupied → top-down car silhouette */}
+          {!isAvail && <CarTopShape cx={W/2} cy={H/2} w={W*0.66} h={H*0.78} color={carColor}/>}
+
+          {/* available → big slot number */}
+          {isAvail && (
+            <text x={W/2} y={H/2 + 5} textAnchor="middle"
+                  fontSize={isSelected ? 18 : 16} fontWeight={800}
+                  fill={isSelected ? '#FFFFFF' : '#0F4C3A'}
+                  style={{pointerEvents:'none'}}>
+              {slot.slotNumber}
+            </text>
+          )}
+
+          {/* number badge under each slot */}
+          <g transform={`translate(${W/2 - 11}, ${H + 3})`} style={{pointerEvents:'none'}}>
+            <rect width={22} height={12} rx={6}
+                  fill={isSelected ? '#0F4C3A' : (isAvail ? '#FFFFFF' : '#F3F4F6')}
+                  stroke={isAvail ? '#16A34A' : '#9CA3AF'} strokeWidth={0.7}/>
+            <text x={11} y={9} textAnchor="middle" fontSize={8.5} fontWeight={800}
+                  fill={isSelected ? '#FFFFFF' : (isAvail ? '#0F4C3A' : '#6B7280')}>
+              {slot.slotNumber}
+            </text>
+          </g>
+
+          {/* selected callout above */}
+          {isSelected && (
+            <g transform={`translate(${W/2 - 32}, ${-22})`} style={{pointerEvents:'none'}}>
+              <rect width={64} height={15} rx={3.5} fill="#0F4C3A"/>
+              <text x={32} y={10.4} textAnchor="middle" fontSize={8.5}
+                    fontWeight={800} fill="#FFFFFF" letterSpacing={0.4}>
+                🎯 SİZİN SLOT
+              </text>
+              <path d={`M 28 15 L 32 19 L 36 15 Z`} fill="#0F4C3A"/>
+            </g>
+          )}
+        </g>
+      );
+    }
+
+    function StreetScheme({ slots, selectedId, onSelect }) {
+      // ── Hooks MUST be called unconditionally on every render ─────────
+      const containerRef = useRef(null);
+      const isEmpty = !slots || slots.length === 0;
+
+      // Layout constants (computed every render, cheap)
+      const SW = 56;        // slot width
+      const SH = 92;        // slot depth
+      const GAP = 4;        // gap between slots
+      const ROAD_H = 38;    // road height
+      const PAD_X = 18;
+      const PAD_TOP = 28;   // room for "SİZİN SLOT" callout
+      const PAD_BOT = 30;   // room for slot # badge + sidewalk
+
+      // Auto-scroll selected slot into view
+      useEffect(() => {
+        if (isEmpty) return;
+        if (!selectedId || !containerRef.current) return;
+        const idx = slots.findIndex(s => s.id === selectedId);
+        if (idx < 0) return;
+        const target = PAD_X + idx * (SW + GAP) + SW / 2;
+        const c = containerRef.current;
+        const goal = Math.max(0, target - c.clientWidth / 2);
+        try { c.scrollTo({ left: goal, behavior: 'smooth' }); }
+        catch { c.scrollLeft = goal; }
+      }, [selectedId, slots, isEmpty]);
+
+      // Now it is safe to early-return for the empty state.
+      if (isEmpty) {
+        return (
+          <div className="mx-5 rounded-2xl shadow-card bg-white p-8 text-center text-az-ink-soft text-sm">
+            Bu zonada slot mövcud deyil
+          </div>
+        );
+      }
+
+      const totalSlotsW = slots.length * (SW + GAP) - GAP;
+      const w = totalSlotsW + PAD_X * 2;
+      const h = PAD_TOP + ROAD_H + 6 + SH + PAD_BOT;
+      const ROAD_Y     = PAD_TOP;
+      const SLOTS_Y    = PAD_TOP + ROAD_H + 6;
+      const SIDEWALK_Y = SLOTS_Y + SH + 18;
+      const dashCount  = Math.ceil(w / 36);
+
+      return (
+        <div className="relative mx-5 rounded-2xl shadow-card border border-az-primary/5 overflow-hidden bg-gradient-to-b from-[#E7F0EA] to-[#F0F4F0]">
+          {/* Title pill */}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-white/95 backdrop-blur px-2.5 py-1 rounded-full shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-az-available animate-soft-pulse"/>
+            <span className="text-[10px] font-display font-bold text-az-primary tracking-wide">KÜÇƏ SXEMİ · 3D</span>
+          </div>
+          {/* Legend */}
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-2 bg-white/95 backdrop-blur px-2.5 py-1 rounded-full shadow-sm">
+            <span className="flex items-center gap-1 text-[10px] font-bold text-az-available">
+              <span className="w-2 h-2 rounded-sm bg-az-available"/> Boş
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-az-ink-soft">
+              <span className="w-2 h-2 rounded-sm bg-az-occupied"/> Dolu
+            </span>
+          </div>
+          {/* Scroll hint chevron (right) */}
+          <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 z-10 text-az-primary/40 animate-soft-pulse">
+            <ChevronRight size={20}/>
+          </div>
+
+          <div
+            ref={containerRef}
+            className="overflow-x-auto overflow-y-hidden scrollbar-hide"
+            style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+          >
+            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}
+                 preserveAspectRatio="xMinYMid meet"
+                 style={{display:'block'}}>
+              <defs>
+                <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stopColor="#4B5563"/>
+                  <stop offset="100%" stopColor="#374151"/>
+                </linearGradient>
+                <linearGradient id="sidewalk" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stopColor="#E5E7EB"/>
+                  <stop offset="100%" stopColor="#D1D5DB"/>
+                </linearGradient>
+              </defs>
+
+              {/* asphalt road */}
+              <rect x={0} y={ROAD_Y} width={w} height={ROAD_H} fill="url(#asphalt)"/>
+              {/* yellow center dashes */}
+              {Array.from({length: dashCount}).map((_, k) => (
+                <rect key={k} x={k*36 + 6} y={ROAD_Y + ROAD_H/2 - 1.6}
+                      width={20} height={3.2} rx={1} fill="#FCD34D"/>
+              ))}
+              {/* white edge line where road meets parking */}
+              <rect x={0} y={ROAD_Y + ROAD_H} width={w} height={2} fill="#FFFFFF" opacity={0.9}/>
+
+              {/* parking slots */}
+              <g transform={`translate(0, ${SLOTS_Y})`}>
+                {slots.map((s, i) => (
+                  <StreetSlot key={s.id}
+                              slot={s}
+                              x={PAD_X + i * (SW + GAP)}
+                              W={SW} H={SH}
+                              isSelected={s.id === selectedId}
+                              onClick={() => onSelect(s)}/>
+                ))}
+              </g>
+
+              {/* sidewalk */}
+              <rect x={0} y={SIDEWALK_Y} width={w} height={6} fill="url(#sidewalk)"/>
+              <rect x={0} y={SIDEWALK_Y + 6} width={w} height={4} fill="#9CA3AF" opacity={0.4}/>
+              {/* sidewalk tile lines */}
+              {Array.from({length: Math.ceil(w / 24)}).map((_, k) => (
+                <rect key={k} x={k*24} y={SIDEWALK_Y} width={1} height={6} fill="#9CA3AF" opacity={0.5}/>
+              ))}
+            </svg>
+          </div>
+        </div>
+      );
+    }
+
+    // Backward-compat alias (the rest of the app calls IsometricScheme)
+    const IsometricScheme = StreetScheme;
+
+    // ── LEAFLET MAP ────────────────────────────────────
+    // SVG used for the live user-location marker (blue pulsing dot).
+    const USER_DOT_HTML = (
+      '<div style="position:relative;width:22px;height:22px;">' +
+        '<span style="position:absolute;inset:0;border-radius:50%;background:#3B82F6;opacity:.35;animation:azUserPulse 1.6s ease-out infinite;"></span>' +
+        '<span style="position:absolute;left:5px;top:5px;width:12px;height:12px;border-radius:50%;background:#3B82F6;border:2px solid #fff;box-shadow:0 0 0 2px rgba(59,130,246,.35),0 2px 6px rgba(0,0,0,.25);"></span>' +
+      '</div>'
+    );
+
+    function LeafletMap({ zone, slots, selectedSlot, onSelectSlot, userLocation, nearestSlot }) {
+      const containerRef = useRef(null);
+      const mapRef = useRef(null);
+      const slotLayerRef = useRef(null);
+      const selectedPinRef = useRef(null);
+      const userMarkerRef = useRef(null);
+      const aliveRef = useRef(false);
+      const selectHandlerRef = useRef(onSelectSlot);
+      useEffect(() => { selectHandlerRef.current = onSelectSlot; }, [onSelectSlot]);
+
+      const nearestId = nearestSlot && nearestSlot.zone.id === zone.id ? nearestSlot.slot.id : null;
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        if (typeof window === 'undefined' || !window.L) return;
+        const L = window.L;
+        const map = L.map(containerRef.current, {
+          zoomControl:true, attributionControl:true, preferCanvas:true,
+          fadeAnimation:false, zoomAnimation:true, markerZoomAnimation:false,
+        }).setView([zone.coordinates.lat, zone.coordinates.lng], 19);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom:20, attribution:'&copy; OpenStreetMap',
+        }).addTo(map);
+        slotLayerRef.current = L.layerGroup().addTo(map);
+        mapRef.current = map;
+        aliveRef.current = true;
+        const t = setTimeout(() => { try { map.invalidateSize(); } catch(_) {} }, 250);
+        return () => {
+          aliveRef.current = false;
+          clearTimeout(t);
+          // Cancel any in-flight zoom/pan animation before tearing the map down,
+          // otherwise an animation-end callback can fire post-remove and throw
+          // "Cannot read properties of undefined (reading '_leaflet_pos')".
+          try { map.stop(); } catch(_) {}
+          try { map.off(); } catch(_) {}
+          try { map.remove(); } catch(_) {}
+          mapRef.current = null; slotLayerRef.current = null; selectedPinRef.current = null; userMarkerRef.current = null;
+        };
+      }, [zone.id, zone.coordinates.lat, zone.coordinates.lng]);
+
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !mapRef.current || !slotLayerRef.current) return;
+        slotLayerRef.current.clearLayers();
+        slots.forEach((s, idx) => {
+          const colorMain = s.status==='available' ? '#16A34A' : '#9CA3AF';
+          const isNearest = s.id === nearestId;
+          const ring = isNearest
+            ? 'box-shadow:0 0 0 3px #3B82F6,0 0 0 6px rgba(59,130,246,.35),0 2px 6px rgba(0,0,0,0.25);animation:azNearestRing 1.4s ease-in-out infinite;'
+            : 'box-shadow:0 2px 6px rgba(0,0,0,0.25);';
+          const html = `
+            <div style="position:relative;animation:fadeIn .35s ${idx*30}ms both;">
+              <div style="width:24px;height:24px;border-radius:50%;background:${colorMain};
+                border:2px solid #fff;${ring}
+                display:flex;align-items:center;justify-content:center;
+                color:#fff;font-weight:800;font-size:10px;font-family:Inter,sans-serif;">
+                ${s.slotNumber}
+              </div>
+            </div>`;
+          const icon = L.divIcon({ html, className:'az-marker', iconSize:[24,24], iconAnchor:[12,12] });
+          const m = L.marker([s.coordinates.lat, s.coordinates.lng], { icon });
+          if (s.status === 'available') m.on('click', () => selectHandlerRef.current?.(s));
+          m.addTo(slotLayerRef.current);
+        });
+      }, [slots, nearestId]);
+
+      // Live user location marker.
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !mapRef.current || !aliveRef.current) return;
+        if (userMarkerRef.current) {
+          try { mapRef.current.removeLayer(userMarkerRef.current); } catch(_) {}
+          userMarkerRef.current = null;
+        }
+        if (!userLocation) return;
+        try {
+          const icon = L.divIcon({ html: USER_DOT_HTML, className: 'az-user-marker', iconSize:[22,22], iconAnchor:[11,11] });
+          const m = L.marker([userLocation.lat, userLocation.lng], { icon, zIndexOffset: 900, interactive: false });
+          m.addTo(mapRef.current);
+          userMarkerRef.current = m;
+        } catch(_) {}
+      }, [userLocation]);
+
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !mapRef.current || !aliveRef.current) return;
+        if (selectedPinRef.current) {
+          try { mapRef.current.removeLayer(selectedPinRef.current); } catch(_) {}
+          selectedPinRef.current = null;
+        }
+        if (!selectedSlot) return;
+        const html = `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-12px);">
+            <div style="background:#fff;border:2px solid #16A34A;border-radius:14px;
+              padding:3px 9px;font-size:11px;font-weight:800;color:#0F4C3A;
+              font-family:'Plus Jakarta Sans',sans-serif;
+              display:flex;align-items:center;gap:5px;
+              box-shadow:0 4px 10px rgba(15,76,58,0.25);white-space:nowrap;">
+              Slot ${selectedSlot.slotNumber}
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-9-5 18-3-7-6-2z"/></svg>
+            </div>
+            <svg width="34" height="44" viewBox="0 0 34 44" style="filter:drop-shadow(0 4px 8px rgba(220,38,38,0.4));margin-top:-2px;">
+              <path d="M17 2 C8 2 2 8 2 17 c0 11 15 25 15 25 s15-14 15-25 C32 8 26 2 17 2z" fill="#DC2626" stroke="#fff" stroke-width="2"/>
+              <circle cx="17" cy="17" r="6" fill="#fff"/>
+              <circle cx="17" cy="17" r="3" fill="#DC2626"/>
+            </svg>
+          </div>`;
+        try {
+          const icon = L.divIcon({ html, className:'az-marker', iconSize:[80,60], iconAnchor:[40,50] });
+          const pin = L.marker([selectedSlot.coordinates.lat, selectedSlot.coordinates.lng], { icon, zIndexOffset:1000 });
+          pin.addTo(mapRef.current);
+          selectedPinRef.current = pin;
+          mapRef.current.flyTo(
+            [selectedSlot.coordinates.lat, selectedSlot.coordinates.lng],
+            20, { duration:1.2, animate:true }
+          );
+        } catch(_) { /* swallow rare race when the map is being torn down */ }
+      }, [selectedSlot]);
+
+      const recenterOnMe = useCallback(() => {
+        if (!userLocation || !mapRef.current || !aliveRef.current) return;
+        try {
+          mapRef.current.flyTo([userLocation.lat, userLocation.lng], 18, { duration: 1.0 });
+        } catch(_) {}
+      }, [userLocation]);
+
+      return (
+        <div className="mx-5 rounded-2xl overflow-hidden shadow-card border border-az-primary/10 relative">
+          <div ref={containerRef} className="w-full h-[220px]"/>
+          <div className="absolute top-2.5 left-2.5 z-[400] bg-white/95 backdrop-blur px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1.5 pointer-events-none">
+            <MapPin size={11} className="text-az-selected"/>
+            <span className="text-[10px] font-display font-bold text-az-primary">XƊRİTƊ · BAKI</span>
+          </div>
+          {userLocation && (
+            <button onClick={recenterOnMe} aria-label="Mənim konumum"
+              className="absolute bottom-2.5 right-2.5 z-[400] w-9 h-9 rounded-xl bg-white shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition">
+              <Target size={16}/>
+            </button>
+          )}
+          {nearestSlot && nearestSlot.zone.id === zone.id && (
+            <div className="absolute bottom-2.5 left-2.5 z-[400] bg-blue-600/95 text-white px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-soft-pulse"/>
+              <span className="text-[10px] font-display font-bold tracking-wide">ƊN YAXIN · SLOT {nearestSlot.slot.slotNumber} · {fmtDistance(nearestSlot.distance)}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── ZONE DETAIL SCREEN ─────────────────────────────────────────
+    function ZoneDetailHeader({ zone, onBack, onRefresh, refreshing, availableCount }) {
+      return (
+        <div className="px-4 pt-1 pb-2 flex items-start justify-between bg-az-bg flex-shrink-0">
+          <div className="flex items-start gap-2">
+            <button onClick={onBack} aria-label="Geri"
+              className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-az-primary hover:bg-az-primary hover:text-white transition mt-0.5">
+              <ChevronLeft size={20}/>
+            </button>
+            <div className="leading-tight">
+              <p className="font-display font-extrabold text-az-ink text-[18px] tracking-tight">{zone.code} Sektoru</p>
+              <p className="text-[11px] text-az-ink-soft">
+                Real-vaxt slot görüntüsü · <span className="text-az-available font-bold">{availableCount} boş slot</span>
+              </p>
+            </div>
+          </div>
+          <button onClick={onRefresh} aria-label="Yenilə"
+            className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-az-primary hover:bg-az-primary hover:text-white transition">
+            <RefreshCw size={17} className={refreshing?'animate-spin':''}/>
+          </button>
+        </div>
+      );
+    }
+
+    // PARK ET — primary action that opens the payment screen.
+    function ParkEtButton({ slot, onClick }) {
+      const disabled = !slot;
+      return (
+        <button onClick={onClick} disabled={disabled}
+          className={`mx-5 mt-3 h-[60px] w-[calc(100%-40px)] rounded-2xl flex items-center justify-center gap-2.5 font-display font-extrabold text-[16px] tracking-tight transition active:scale-[0.97] ${disabled
+            ? 'bg-az-occupied/40 text-az-ink-soft cursor-not-allowed'
+            : 'bg-az-available hover:bg-az-available-light text-white shadow-lg shadow-az-available/30'}`}>
+          <Car size={20} className={disabled?'':'fill-white'}/>
+          {disabled ? 'Əvvəlcə slot seçin' : `PARK ET (Slot ${slot.slotNumber})`}
+        </button>
+      );
+    }
+
+    // WAZE — secondary action shown next to Park Et.
+    function WazeButton({ slot, onClick }) {
+      const disabled = !slot;
+      return (
+        <button onClick={onClick} disabled={disabled}
+          className={`mt-2 h-[44px] flex-1 rounded-xl flex items-center justify-center gap-1.5 font-display font-bold text-[13px] tracking-tight transition active:scale-[0.97] ${disabled
+            ? 'bg-az-occupied/30 text-az-ink-soft/60 cursor-not-allowed'
+            : 'bg-az-primary hover:bg-az-primary-dark text-white shadow-md shadow-az-primary/25'}`}>
+          <Navigation size={15} className={disabled?'':'fill-white'}/>
+          Waze ilə get
+        </button>
+      );
+    }
+
+    // Demo helper that opens the proximity (“500 m yaxınlıq”) preview.
+    function ProximityTriggerButton({ onClick, disabled }) {
+      return (
+        <button onClick={onClick} disabled={disabled}
+          className={`mt-2 h-[44px] flex-1 rounded-xl border border-dashed flex items-center justify-center gap-1.5 text-[12px] font-display font-bold transition ${disabled
+            ? 'border-az-occupied/40 text-az-ink-soft/60 cursor-not-allowed'
+            : 'border-az-primary/40 text-az-primary hover:bg-az-primary/5'}`}>
+          <Target size={14}/>
+          500 m demo
+        </button>
+      );
+    }
+
+    function ZoneDetailScreen({ zone, slots, selectedSlot, onBack, onSelectSlot, onRefresh, onProximity, onPark, refreshing, userLocation, nearestSlot }) {
+      const availableCount = slots.filter(s=>s.status==='available').length;
+      const handleWaze = () => {
+        if (!selectedSlot) return;
+        const url = `https://waze.com/ul?ll=${selectedSlot.coordinates.lat},${selectedSlot.coordinates.lng}&navigate=yes`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      };
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <ZoneDetailHeader zone={zone} onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} availableCount={availableCount}/>
+          <div className="flex-1 overflow-y-auto pb-32 scrollbar-hide">
+            <div className="bg-white shadow-sm">
+              <SlotStrip slots={slots} selectedId={selectedSlot?.id} onSelect={onSelectSlot}/>
+            </div>
+            <div className="mt-3">
+              <IsometricScheme slots={slots} selectedId={selectedSlot?.id} onSelect={onSelectSlot}/>
+            </div>
+            <div className="mt-3">
+              <LeafletMap zone={zone} slots={slots} selectedSlot={selectedSlot} onSelectSlot={onSelectSlot}
+                userLocation={userLocation} nearestSlot={nearestSlot}/>
+            </div>
+            {/* Primary action — opens payment screen */}
+            <ParkEtButton slot={selectedSlot} onClick={onPark}/>
+            {/* Secondary actions row */}
+            <div className="mx-5 flex items-center gap-2">
+              <WazeButton slot={selectedSlot} onClick={handleWaze}/>
+              <ProximityTriggerButton onClick={onProximity} disabled={!selectedSlot}/>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── PAYMENT MODAL (Parklanma əməliyyatı) ─────────────────────────
+    const DURATIONS = [
+      { id:'15m', label:'15 dəq', minutes: 15 },
+      { id:'1h',  label:'1 saat', minutes: 60 },
+      { id:'2h',  label:'2 saat', minutes: 120 },
+      { id:'3h',  label:'3 saat', minutes: 180 },
+      { id:'4h',  label:'4 saat', minutes: 240 },
+      { id:'other', label:'Digər', minutes: 60 },
+    ];
+
+    function PaymentModal({ zone, slot, balance = 0, onClose, onConfirm }) {
+      const [carPlate, setCarPlate]   = useState('');
+      const [editingPlate, setEditing] = useState(false);
+      const [payMethod, setPayMethod] = useState('apple'); // 'wallet' | 'apple' | 'other'
+      const [payTiming, setPayTiming] = useState('after'); // 'after' | 'before'
+      const [durationId, setDurationId] = useState('1h');
+      const [favourite, setFavourite] = useState(false);
+
+      const duration = DURATIONS.find(d => d.id === durationId) || DURATIONS[1];
+      const totalAZN = payTiming === 'before'
+        ? (duration.minutes / 60) * (zone.pricePerHour || 0)
+        : 0;
+
+      const handleAddCar = () => setEditing(true);
+
+      return (
+        <div className="fixed inset-0 z-[200] flex items-stretch justify-center animate-fade-in">
+          <div className="absolute inset-0 bg-az-ink/60 backdrop-blur-sm" onClick={onClose}/>
+          <div className="relative w-full md:max-w-[430px] bg-white animate-slide-up flex flex-col md:rounded-[28px] md:my-2 overflow-hidden">
+            {/* Header */}
+            <div className="relative flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+              <button onClick={onClose}
+                      className="text-az-available font-display font-bold text-[14px] flex items-center gap-1 hover:opacity-70">
+                <ChevronLeft size={18}/> Geri
+              </button>
+              <p className="absolute left-1/2 -translate-x-1/2 font-display font-extrabold text-az-primary text-[15px]">
+                Parklanma əməliyyatı
+              </p>
+              <button onClick={()=>setFavourite(!favourite)} aria-label="Sıx istifadə olunan"
+                      className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-az-available/10 transition">
+                <svg width="22" height="22" viewBox="0 0 24 24"
+                     fill={favourite ? '#16A34A' : 'none'}
+                     stroke="#16A34A" strokeWidth={favourite ? 1.5 : 2}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 scrollbar-hide">
+              {/* Zone summary */}
+              <div>
+                <p className="font-display font-extrabold text-az-primary text-[16px]">{zone.name}</p>
+                <p className="text-[12.5px] mt-0.5 flex items-center gap-1">
+                  <span className="font-display font-extrabold text-az-available">{zone.code}</span>
+                  <span className="text-az-occupied">|</span>
+                  <span className="text-az-ink-soft">{zone.name}</span>
+                </p>
+              </div>
+
+              {/* Car select */}
+              <div>
+                <p className="text-[12.5px] font-display font-bold text-az-ink mb-2">Nəqliyyat vasitəsini seçin</p>
+                {!editingPlate && !carPlate && (
+                  <button onClick={handleAddCar}
+                    className="w-full h-[52px] rounded-xl bg-az-occupied-bg hover:bg-az-occupied/30 text-az-ink font-display font-bold text-[14px] flex items-center justify-center gap-2 transition">
+                    <Plus size={16}/> Avtomobil əlavə edin
+                  </button>
+                )}
+                {editingPlate && (
+                  <div className="flex items-center gap-2">
+                    <input autoFocus value={carPlate}
+                           onChange={e => setCarPlate(e.target.value.toUpperCase())}
+                           placeholder="99-AA-999" maxLength={10}
+                           className="flex-1 h-[52px] px-4 rounded-xl bg-az-occupied-bg text-az-ink font-display font-extrabold text-[15px] tracking-wider text-center placeholder:text-az-ink-soft/50 focus:outline-none focus:ring-2 focus:ring-az-primary/40"/>
+                    <button onClick={()=>{ if(carPlate.trim()) setEditing(false); }}
+                      className="h-[52px] px-4 rounded-xl bg-az-primary text-white font-display font-bold text-[13px] flex items-center gap-1">
+                      <Check size={16}/> Yadda saxla
+                    </button>
+                  </div>
+                )}
+                {!editingPlate && carPlate && (
+                  <button onClick={()=>setEditing(true)}
+                    className="w-full h-[52px] rounded-xl bg-az-available text-white font-display font-extrabold text-[15px] tracking-wider flex items-center justify-center gap-2 transition">
+                    <Car size={16} className="fill-white text-az-available"/> {carPlate}
+                    <span className="ml-1 text-[10px] font-bold opacity-80 uppercase tracking-widest">dəyiş</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Payment method */}
+              <div>
+                <p className="text-[12.5px] font-display font-bold text-az-ink mb-2">Ödəniş üsulunu seçin</p>
+                <div className="space-y-2">
+                  {/* Top row: Balans + Apple Pay */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={()=>setPayMethod('wallet')}
+                      className={`h-[52px] rounded-xl font-display font-bold text-[14px] flex items-center justify-center gap-1.5 transition ${payMethod==='wallet'
+                        ? 'bg-az-primary text-white shadow-md'
+                        : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                      <Wallet size={15}/> Balans {balance.toFixed(0)} AZN
+                    </button>
+                    <button onClick={()=>setPayMethod('apple')}
+                      className={`h-[52px] rounded-xl font-display font-bold text-[14px] flex items-center justify-center gap-1.5 transition ${payMethod==='apple'
+                        ? 'bg-az-primary text-white shadow-md'
+                        : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M16.365 1.43c0 1.14-.49 2.27-1.27 3.06-.86.86-2.27 1.53-3.32 1.45-.13-1.13.4-2.27 1.18-3.06.87-.92 2.34-1.6 3.41-1.45zM20.5 17.04c-.55 1.27-.81 1.83-1.51 2.96-.99 1.6-2.39 3.6-4.13 3.61-1.55.02-1.95-1.01-4.06-1-2.11.01-2.55 1.02-4.1 1-1.74-.01-3.07-1.81-4.06-3.41-2.78-4.5-3.07-9.79-1.36-12.6 1.21-1.99 3.12-3.16 4.92-3.16 1.83 0 2.98 1.01 4.49 1.01 1.46 0 2.36-1.01 4.47-1.01 1.6 0 3.3.87 4.51 2.39-3.97 2.18-3.32 7.86.83 10.21z"/>
+                      </svg>
+                      Apple Pay
+                    </button>
+                  </div>
+                  {/* Bottom row: Digər full width */}
+                  <button onClick={()=>setPayMethod('other')}
+                    className={`w-full h-[52px] rounded-xl font-display font-bold text-[14px] flex items-center justify-center gap-1.5 transition ${payMethod==='other'
+                      ? 'bg-az-primary text-white shadow-md'
+                      : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                    <CreditCard size={15}/> Digər
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment timing */}
+              <div>
+                <p className="text-[12.5px] font-display font-bold text-az-ink mb-2">Ödəniş vaxtı</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={()=>setPayTiming('after')}
+                    className={`h-[52px] rounded-xl font-display font-bold text-[14px] transition ${payTiming==='after'
+                      ? 'bg-az-primary text-white shadow-md'
+                      : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                    Sonradan ödəniş
+                  </button>
+                  <button onClick={()=>setPayTiming('before')}
+                    className={`h-[52px] rounded-xl font-display font-bold text-[14px] transition ${payTiming==='before'
+                      ? 'bg-az-primary text-white shadow-md'
+                      : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                    Öncədən ödəniş
+                  </button>
+                </div>
+              </div>
+
+              {/* Duration picker (only for pre-paid) */}
+              {payTiming === 'before' && (
+                <div className="animate-fade-in">
+                  <p className="text-[12.5px] font-display font-bold text-az-ink mb-2">Parklanma müddəti</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DURATIONS.map(d => (
+                      <button key={d.id} onClick={()=>setDurationId(d.id)}
+                        className={`h-[52px] rounded-xl font-display font-bold text-[13px] transition ${durationId===d.id
+                          ? 'bg-az-primary text-white shadow-md'
+                          : 'bg-az-occupied-bg text-az-ink hover:bg-az-occupied/30'}`}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cəmi (only for pre-paid) */}
+              {payTiming === 'before' && (
+                <div className="animate-fade-in">
+                  <p className="text-[12.5px] font-display font-bold text-az-ink mb-2">Cəmi</p>
+                  <div className="h-[52px] rounded-xl bg-az-occupied-bg flex items-center px-4 gap-3">
+                    <span className="w-7 h-7 rounded-md bg-white text-az-primary font-display font-extrabold text-[15px] flex items-center justify-center shadow-sm">
+                      Σ
+                    </span>
+                    <span className="font-display font-extrabold text-[16px] text-az-ink">
+                      {totalAZN.toFixed(2)} AZN
+                    </span>
+                    {zone.pricePerHour > 0 && (
+                      <span className="ml-auto text-[11px] text-az-ink-soft">
+                        {zone.pricePerHour.toFixed(2)} AZN/saat · {duration.label}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Slot summary */}
+              <div className="rounded-xl bg-az-available/10 border border-az-available/30 p-3 text-[12px] flex items-start gap-2">
+                <Target size={15} className="text-az-available flex-shrink-0 mt-0.5"/>
+                <p className="text-az-ink leading-snug">
+                  Slot <strong>{slot.slotNumber}</strong> sizin üçün rezerv olunur.
+                  Küçə kənarında <strong>{slot.slotNumber}-ci</strong> yerdə dayanın.
+                </p>
+              </div>
+            </div>
+
+            {/* Confirm button (sticky) */}
+            <div className="px-4 py-3 border-t border-gray-100 bg-white" style={{paddingBottom:'max(env(safe-area-inset-bottom), 12px)'}}>
+              <button onClick={()=>onConfirm({ carPlate: carPlate || 'GUEST', payMethod, payTiming, durationId, totalAZN })}
+                disabled={editingPlate && !carPlate.trim()}
+                className={`w-full h-[56px] rounded-2xl font-display font-extrabold text-[16px] flex items-center justify-center gap-2 transition active:scale-[0.97] ${editingPlate && !carPlate.trim()
+                  ? 'bg-az-occupied/40 text-az-ink-soft cursor-not-allowed'
+                  : 'bg-az-available hover:bg-az-available-light text-white shadow-lg shadow-az-available/30'}`}>
+                Təsdiq edin
+                {payTiming === 'before' && totalAZN > 0 && (
+                  <span className="ml-1 px-2 py-0.5 rounded-md bg-white/20 text-[13px]">{totalAZN.toFixed(2)} AZN</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── PROXIMITY MODAL + CONFETTI ─────────────────────────────────
+    const CONFETTI_COLORS = ['#16A34A','#22C55E','#FBBF24','#DC2626','#0F4C3A','#3B82F6','#F97316','#A855F7'];
+    function Confetti() {
+      const pieces = useMemo(() => Array.from({length: 80}, (_, i) => ({
+        id:i, left: Math.random()*100, delay: Math.random()*0.5,
+        duration: 2.4 + Math.random()*1.6,
+        color: CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)],
+        w: 6 + Math.random()*8, h: 8 + Math.random()*12,
+        rotate: Math.random()*360,
+      })), []);
+      return (
+        <div className="fixed inset-0 pointer-events-none z-[300] overflow-hidden">
+          {pieces.map(p => (
+            <span key={p.id} style={{
+              position:'absolute', left:p.left+'%', top:'-12vh',
+              width:p.w+'px', height:p.h+'px', background:p.color,
+              transform:`rotate(${p.rotate}deg)`,
+              animation:`confettiFall ${p.duration}s ease-in ${p.delay}s forwards`,
+              borderRadius:'2px', boxShadow:'0 0 6px rgba(0,0,0,0.08)',
+            }}/>
+          ))}
+        </div>
+      );
+    }
+
+    function MiniSlot({ slot, isCenter }) {
+      if (isCenter) {
+        return (
+          <div className="relative flex flex-col items-center">
+            <span className="absolute -top-7 text-az-available text-[10px] font-display font-extrabold tracking-wider whitespace-nowrap">↓ SİZİN SLOT</span>
+            <div className="relative">
+              <span className="absolute inset-0 rounded-2xl bg-az-available/30 animate-halo"/>
+              <div className="relative w-[88px] h-[112px] rounded-2xl bg-gradient-to-b from-az-available to-az-primary text-white flex flex-col items-center justify-center shadow-glow-green ring-4 ring-white animate-pulse-slot">
+                <span className="font-display font-extrabold text-[34px] leading-none">{slot.slotNumber}</span>
+                <span className="text-[10px] mt-2 tracking-widest font-bold opacity-95">SİZİN</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      let cls = '', label = 'BOŞ';
+      if (slot.status === 'occupied') { cls='bg-az-occupied-bg border border-az-occupied/40 text-az-ink-soft'; label='DOLU'; }
+      else if (slot.status === 'reserved') { cls='bg-az-reserved/15 border border-az-reserved/50 text-az-reserved'; label='RES'; }
+      else cls = 'bg-az-available/90 text-white';
+      return (
+        <div className={`w-[52px] h-[68px] rounded-xl flex flex-col items-center justify-center font-display font-extrabold ${cls}`}>
+          <span className="text-[18px] leading-none">{slot.slotNumber}</span>
+          <span className="text-[8px] mt-1 tracking-widest opacity-90">{label}</span>
+        </div>
+      );
+    }
+
+    function ProximityModal({ zone, slots, selectedSlot, onClose, onPark }) {
+      if (!selectedSlot) return null;
+      const idx = slots.findIndex(s => s.id === selectedSlot.id);
+      const offsets = [-3,-2,-1,0,1,2,3];
+      const window7 = offsets.map(d => slots[idx+d]).filter(Boolean);
+      return (
+        <div className="fixed inset-0 z-[180] flex items-end justify-center animate-fade-in">
+          <div className="absolute inset-0 bg-az-ink/60 backdrop-blur-sm" onClick={onClose}/>
+          <div className="relative w-full md:max-w-[430px] bg-white rounded-t-[28px] shadow-2xl animate-slide-up" style={{maxHeight:'85vh'}}>
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-az-occupied/40"/>
+            <button onClick={onClose} aria-label="Bağla"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-az-occupied-bg text-az-ink-soft hover:text-az-primary flex items-center justify-center transition z-10">
+              <X size={17}/>
+            </button>
+            <div className="px-6 pt-8 pb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <Target size={18} className="text-az-available"/>
+                <p className="font-display font-extrabold text-az-primary text-[18px]">Parka Yaxınlaşırsınız!</p>
+              </div>
+              <p className="text-[12px] text-az-ink-soft leading-snug mb-6">
+                500 metr məsafədəsiniz. Aşağıda parkın daxili görünüşü – <span className="font-bold text-az-primary">{zone.code}</span>.
+                Slot {selectedSlot.slotNumber}-i hazırlayın.
+              </p>
+              <div className="relative bg-gradient-to-b from-[#E7F0EA] to-[#F0F4F0] rounded-2xl p-5 pt-8 mb-5 border border-az-primary/10 overflow-hidden">
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-white/95 px-2 py-0.5 rounded-full shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-az-available animate-soft-pulse"/>
+                  <span className="text-[9px] font-display font-bold text-az-primary tracking-wide">YAXINLAŞMA REJİMİ</span>
+                </div>
+                <div className="flex items-end justify-center gap-1.5 overflow-x-auto scrollbar-hide pt-4 pb-2">
+                  {window7.map(s => (
+                    <MiniSlot key={s.id} slot={s} isCenter={s.id===selectedSlot.id}/>
+                  ))}
+                </div>
+                <div className="mt-5 flex items-center gap-2 text-[10.5px] text-az-ink-soft">
+                  <div className="flex-1 h-px border-t border-dashed border-az-primary/30"/>
+                  <span className="font-display font-bold text-az-primary whitespace-nowrap">← {zone.code}</span>
+                  <div className="flex-1 h-px border-t border-dashed border-az-primary/30"/>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 bg-az-available/10 border border-az-available/30 rounded-xl p-3 mb-5">
+                <Sparkles size={16} className="text-az-available flex-shrink-0 mt-0.5"/>
+                <p className="text-[12px] leading-snug text-az-ink">
+                  Parka daxil olduqdan sonra <strong>{zone.code}</strong> sektoruna keçin.
+                  <strong> Slot {selectedSlot.slotNumber}</strong> sizi gözləyir – küçə kənarında {selectedSlot.slotNumber}-ci yer.
+                </p>
+              </div>
+              <button onClick={onPark}
+                className="w-full h-[56px] rounded-2xl bg-az-available hover:bg-az-available-light active:scale-[0.97] transition text-white font-display font-extrabold text-[15px] flex items-center justify-center gap-2 shadow-lg shadow-az-available/30">
+                <Navigation size={18} className="fill-white"/>
+                PARK ET (Slot {selectedSlot.slotNumber})
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── FULL-PAGE MAP SCREEN (Xəritə tab) ──────────────────────────
+    function FullMapScreen({ zones, onSelectZone, userLocation, nearestSlot }) {
+      const containerRef = useRef(null);
+      const mapRef = useRef(null);
+      const userMarkerRef = useRef(null);
+      const nearestLineRef = useRef(null);
+      const aliveRef = useRef(false);
+
+      // Bounds derived from the zone list — we use them both for the
+      // initial viewport and for the "HAMISI" button.
+      const cityBounds = useMemo(() => {
+        if (!zones.length) return null;
+        const lats = zones.map(z => z.coordinates.lat);
+        const lngs = zones.map(z => z.coordinates.lng);
+        return [
+          [Math.min(...lats), Math.min(...lngs)],
+          [Math.max(...lats), Math.max(...lngs)],
+        ];
+      }, [zones]);
+
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !containerRef.current) return;
+        const map = L.map(containerRef.current, {
+          zoomControl: false, attributionControl: false,
+          fadeAnimation:false, zoomAnimation:true, markerZoomAnimation:false,
+        });
+        mapRef.current = map;
+        aliveRef.current = true;
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20 }).addTo(map);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        // Frame all zones across the city.
+        if (cityBounds) {
+          map.fitBounds(cityBounds, { padding: [40, 40], maxZoom: 14 });
+        } else {
+          map.setView([40.378, 49.853], 13);
+        }
+        const nearestZoneId = nearestSlot ? nearestSlot.zone.id : null;
+        zones.forEach(z => {
+          const isNearestZone = z.id === nearestZoneId;
+          const colour = isNearestZone ? '#3B82F6' : (z.availableSlots > 0 ? '#16A34A' : '#9CA3AF');
+          const ringStyle = isNearestZone
+            ? 'box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(59,130,246,.45);animation:azNearestRing 1.4s ease-in-out infinite;'
+            : 'box-shadow:0 4px 10px rgba(0,0,0,0.18);';
+          const html =
+            '<div style="position:relative;">' +
+              '<div style="background:' + colour + ';color:#fff;padding:5px 10px;border-radius:14px;font:800 11px Inter,sans-serif;' + ringStyle + 'white-space:nowrap;border:2px solid #fff;">' +
+                z.code + ' · ' + z.availableSlots +
+              '</div>' +
+              '<div style="width:0;height:0;margin:2px auto 0;border:6px solid transparent;border-top-color:' + colour + ';"></div>' +
+            '</div>';
+          const icon = L.divIcon({ html, className: 'az-zone-marker', iconSize: [1,1], iconAnchor: [0, 36] });
+          L.marker([z.coordinates.lat, z.coordinates.lng], { icon })
+            .addTo(map)
+            .on('click', () => onSelectZone(z.id));
+        });
+        return () => {
+          aliveRef.current = false;
+          try { map.stop(); } catch(_) {}
+          try { map.off(); } catch(_) {}
+          try { map.remove(); } catch(_) {}
+          mapRef.current = null; userMarkerRef.current = null; nearestLineRef.current = null;
+        };
+      }, [zones, onSelectZone, nearestSlot]);
+
+      // User dot
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !mapRef.current || !aliveRef.current) return;
+        if (userMarkerRef.current) {
+          try { mapRef.current.removeLayer(userMarkerRef.current); } catch(_) {}
+          userMarkerRef.current = null;
+        }
+        if (!userLocation) return;
+        try {
+          const icon = L.divIcon({ html: USER_DOT_HTML, className: 'az-user-marker', iconSize:[22,22], iconAnchor:[11,11] });
+          const m = L.marker([userLocation.lat, userLocation.lng], { icon, zIndexOffset: 900, interactive: false });
+          m.addTo(mapRef.current);
+          userMarkerRef.current = m;
+        } catch(_) {}
+      }, [userLocation]);
+
+      // Dashed line from user → nearest available slot.
+      useEffect(() => {
+        const L = window.L;
+        if (!L || !mapRef.current || !aliveRef.current) return;
+        if (nearestLineRef.current) {
+          try { mapRef.current.removeLayer(nearestLineRef.current); } catch(_) {}
+          nearestLineRef.current = null;
+        }
+        if (!userLocation || !nearestSlot) return;
+        try {
+          const line = L.polyline(
+            [[userLocation.lat, userLocation.lng], [nearestSlot.slot.coordinates.lat, nearestSlot.slot.coordinates.lng]],
+            { color: '#3B82F6', weight: 3, dashArray: '6, 8', opacity: 0.9 }
+          );
+          line.addTo(mapRef.current);
+          nearestLineRef.current = line;
+        } catch(_) {}
+      }, [userLocation, nearestSlot]);
+
+      const recenterOnMe = useCallback(() => {
+        if (!userLocation || !mapRef.current || !aliveRef.current) return;
+        try { mapRef.current.flyTo([userLocation.lat, userLocation.lng], 17, { duration: 1.0 }); } catch(_) {}
+      }, [userLocation]);
+      const showAll = useCallback(() => {
+        if (!mapRef.current || !aliveRef.current) return;
+        try {
+          if (cityBounds) {
+            mapRef.current.flyToBounds(cityBounds, { padding: [40, 40], maxZoom: 14, duration: 0.8 });
+          } else {
+            mapRef.current.flyTo([40.378, 49.853], 13, { duration: 0.8 });
+          }
+        } catch(_) {}
+      }, [cityBounds]);
+
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <div className="px-5 pt-3 pb-2 flex items-center gap-2 bg-az-bg flex-shrink-0">
+            <MapIconLR size={20} className="text-az-primary"/>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-extrabold text-az-ink text-[18px] leading-tight">Xəritə</p>
+              <p className="text-[11px] text-az-ink-soft truncate">
+                {nearestSlot
+                  ? `Ən yaxın boş yer: ${nearestSlot.zone.code} · Slot ${nearestSlot.slot.slotNumber} · ${fmtDistance(nearestSlot.distance)}`
+                  : userLocation ? 'Yaxın zona axtarılır…' : `${zones.length} zona · pin-ə tap edin`}
+              </p>
+            </div>
+          </div>
+          <div className="relative flex-1 mx-4 mb-4 rounded-2xl shadow-card overflow-hidden border border-az-primary/5" style={{minHeight:0}}>
+            <div ref={containerRef} className="absolute inset-0"/>
+            <button onClick={showAll} aria-label="Bütün zonalar"
+              className="absolute top-3 left-3 z-[400] h-8 px-3 rounded-full bg-white shadow-md flex items-center gap-1.5 text-az-primary hover:bg-az-available/10 active:scale-95 transition">
+              <MapIconLR size={13}/>
+              <span className="text-[10px] font-display font-bold tracking-wide">HAMISI</span>
+            </button>
+            {userLocation && (
+              <button onClick={recenterOnMe} aria-label="Mənim konumum"
+                className="absolute bottom-3 right-3 z-[400] w-11 h-11 rounded-xl bg-white shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 active:scale-95 transition">
+                <Target size={18}/>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── VAXT / SESSİYALAR SCREEN ───────────────────────────────────
+    function HistoryScreen({ activeSession, history, onEndSession, onPickZone }) {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <div className="px-5 pt-3 pb-2 flex items-center gap-2 bg-az-bg flex-shrink-0">
+            <Clock size={20} className="text-az-primary"/>
+            <div>
+              <p className="font-display font-extrabold text-az-ink text-[18px] leading-tight">Sessiyalarım</p>
+              <p className="text-[11px] text-az-ink-soft">Aktiv və keçmiş parklanmalar</p>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide pb-24 px-4 space-y-3">
+            {activeSession ? (
+              <div className="rounded-2xl bg-gradient-to-br from-az-available to-az-primary text-white p-4 shadow-lg shadow-az-available/30 relative overflow-hidden">
+                <span className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full"/>
+                <div className="flex items-center gap-2 mb-2 relative">
+                  <span className="w-2 h-2 rounded-full bg-white animate-soft-pulse"/>
+                  <span className="text-[10px] font-display font-bold tracking-widest opacity-90">AKTİV PARKLANMA</span>
+                </div>
+                <p className="font-display font-extrabold text-[17px] relative leading-tight">{activeSession.zoneName}</p>
+                <p className="text-[12px] opacity-90 mb-3 relative">Slot {activeSession.slotNumber} · {activeSession.carPlate}</p>
+                <div className="flex items-center gap-2 text-[12px] mb-4 relative flex-wrap">
+                  <span className="bg-white/20 rounded-md px-2 py-1 font-display font-bold">{activeSession.startedLabel}</span>
+                  <span className="bg-white/20 rounded-md px-2 py-1 font-display font-bold">{activeSession.totalAZN.toFixed(2)} AZN</span>
+                  {activeSession.payTiming === 'before' && (
+                    <span className="bg-white/20 rounded-md px-2 py-1 font-display font-bold">{activeSession.durationLabel}</span>
+                  )}
+                </div>
+                <button onClick={onEndSession}
+                  className="w-full h-[44px] rounded-xl bg-white text-az-primary font-display font-extrabold text-[13px] hover:bg-white/90 transition relative active:scale-[0.97]">
+                  SESSİYANI BİTİR
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white shadow-card p-5 text-center">
+                <Clock size={32} className="text-az-ink-soft mx-auto mb-2"/>
+                <p className="font-display font-bold text-az-ink text-[13px]">Aktiv parklanma yoxdur</p>
+                <p className="text-[11px] text-az-ink-soft mt-1 mb-3">Yaxınlıqdan park axtarmaq üçün:</p>
+                <button onClick={onPickZone}
+                  className="h-[40px] px-5 rounded-xl bg-az-primary text-white font-display font-bold text-[12px] hover:bg-az-primary-dark active:scale-[0.97] transition">
+                  Park axtar
+                </button>
+              </div>
+            )}
+
+            <p className="text-[12px] font-display font-extrabold text-az-ink-soft tracking-widest pt-2 px-1">TARİXÇƏ</p>
+            {history.length === 0 ? (
+              <p className="text-[12px] text-az-ink-soft text-center py-8 italic">Hələ ki sessiya yoxdur</p>
+            ) : (
+              history.map(h => (
+                <div key={h.id} className="rounded-xl bg-white shadow-card p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-az-available/10 flex items-center justify-center flex-shrink-0">
+                    <Car size={18} className="text-az-available"/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-extrabold text-az-ink text-[13px] truncate">{h.zoneName}</p>
+                    <p className="text-[11px] text-az-ink-soft">{h.date} · Slot {h.slotNumber} · {h.duration}</p>
+                  </div>
+                  <p className="font-display font-extrabold text-az-primary text-[13px] whitespace-nowrap">{h.totalAZN.toFixed(2)} AZN</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── DİGƏR (Menu) ───────────────────────────────────────────────
+    function MoreScreen({ onAction }) {
+      const items = [
+        { id:'notif',  label:'Bildirişlər',       icon: Bell,        hint:'3 yeni' },
+        { id:'lang',   label:'Dil',               icon: Sparkles,    hint:'Azərbaycan' },
+        { id:'tariff', label:'Tariflər',          icon: CreditCard,  hint:'Saatlıq · Aylıq' },
+        { id:'access', label:'Əlçatanlıq',        icon: Accessibility, hint:'Aktiv' },
+        { id:'help',   label:'Yardım & Dəstək',   icon: Target,      hint:'24/7' },
+        { id:'about',  label:'AzParking haqqında', icon: MapPin,      hint:'v1.0' },
+      ];
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <div className="px-5 pt-3 pb-2 flex items-center gap-2 bg-az-bg flex-shrink-0">
+            <MoreHorizontal size={20} className="text-az-primary"/>
+            <div>
+              <p className="font-display font-extrabold text-az-ink text-[18px] leading-tight">Digər</p>
+              <p className="text-[11px] text-az-ink-soft">Tənzimləmələr və əlavələr</p>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide pb-24 px-4 space-y-2">
+            {items.map(it => {
+              const Icon = it.icon;
+              return (
+                <button key={it.id} onClick={()=>onAction(it)}
+                  className="w-full rounded-xl bg-white shadow-card p-3 flex items-center gap-3 hover:bg-az-available/5 active:scale-[0.99] transition text-left">
+                  <div className="w-10 h-10 rounded-lg bg-az-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon size={18} className="text-az-primary"/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-extrabold text-az-ink text-[14px]">{it.label}</p>
+                    {it.hint && <p className="text-[11px] text-az-ink-soft">{it.hint}</p>}
+                  </div>
+                  <ChevronRight size={18} className="text-az-ink-soft flex-shrink-0"/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── PROFİL SCREEN ──────────────────────────────────────────────
+    function ProfileScreen({ user, balance, userCar, onTopUp, onAddCar, onLogout }) {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+          <div className="px-5 pt-3 pb-2 flex items-center gap-2 bg-az-bg flex-shrink-0">
+            <User size={20} className="text-az-primary"/>
+            <p className="font-display font-extrabold text-az-ink text-[18px] leading-tight">Profil</p>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide pb-24 px-4 space-y-3">
+            {/* User card */}
+            <div className="rounded-2xl bg-gradient-to-br from-az-primary to-az-primary-dark text-white p-4 shadow-lg relative overflow-hidden">
+              <span className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"/>
+              <span className="absolute -bottom-12 -left-8 w-32 h-32 bg-az-available/15 rounded-full"/>
+              <div className="flex items-center gap-3 relative">
+                <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-display font-extrabold text-[22px] ring-2 ring-white/30">
+                  {user.initial}
+                </div>
+                <div>
+                  <p className="font-display font-extrabold text-[17px] leading-tight">{user.name}</p>
+                  <p className="text-[12px] opacity-90">{user.phone}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Balance */}
+            <div className="rounded-2xl bg-white shadow-card p-4 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-az-available/15 flex items-center justify-center">
+                <Wallet size={20} className="text-az-available"/>
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] text-az-ink-soft tracking-widest font-display font-bold">BALANS</p>
+                <p className="font-display font-extrabold text-az-primary text-[20px]">{balance.toFixed(2)} AZN</p>
+              </div>
+              <button onClick={onTopUp}
+                className="h-[40px] px-4 rounded-xl bg-az-primary text-white font-display font-bold text-[12px] hover:bg-az-primary-dark transition active:scale-[0.97]">
+                Artır
+              </button>
+            </div>
+
+            {/* My cars */}
+            <div className="rounded-2xl bg-white shadow-card p-4">
+              <p className="text-[11px] text-az-ink-soft tracking-widest font-display font-bold mb-2">AVTOMOBİLLƏRİM</p>
+              {userCar ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-az-primary/10 flex items-center justify-center">
+                    <Car size={18} className="text-az-primary"/>
+                  </div>
+                  <p className="font-display font-extrabold text-az-ink tracking-wider">{userCar}</p>
+                  <button onClick={onAddCar} aria-label="Dəyiş"
+                    className="ml-auto h-[34px] px-3 rounded-lg bg-az-occupied-bg text-az-ink font-display font-bold text-[11px]">
+                    Dəyiş
+                  </button>
+                </div>
+              ) : (
+                <button onClick={onAddCar}
+                  className="w-full h-[44px] rounded-xl bg-az-occupied-bg text-az-ink font-display font-bold text-[13px] flex items-center justify-center gap-2">
+                  <Plus size={15}/> Avtomobil əlavə edin
+                </button>
+              )}
+            </div>
+
+            {/* Payment cards */}
+            <div className="rounded-2xl bg-white shadow-card p-4">
+              <p className="text-[11px] text-az-ink-soft tracking-widest font-display font-bold mb-2">ÖDƏNİŞ KARTLARI</p>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-az-primary/10 flex items-center justify-center">
+                  <CreditCard size={18} className="text-az-primary"/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-extrabold text-az-ink text-[13px]">Visa **** 4242</p>
+                  <p className="text-[11px] text-az-ink-soft">Əsas kart</p>
+                </div>
+                <Check size={16} className="text-az-available"/>
+              </div>
+            </div>
+
+            {/* Logout */}
+            <button onClick={onLogout}
+              className="w-full h-[48px] rounded-xl bg-white shadow-card text-az-occupied font-display font-extrabold text-[13px] hover:bg-red-50 transition active:scale-[0.97]">
+              Hesabdan çıxış
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── APP (state machine) ────────────────────────────────────────
+    function App() {
+      const [view, setView] = useState('splash');
+      const [selectedZoneId, setSelectedZoneId] = useState(null);
+      const [selectedSlotId, setSelectedSlotId] = useState(null);
+      const [zoneSlots, setZoneSlots] = useState(buildInitialSlots);
+      const [aiRec, setAiRec] = useState(null);
+      const [aiLoading, setAiLoading] = useState(true);
+      const [proximityOpen, setProximityOpen] = useState(false);
+      const [paymentOpen,  setPaymentOpen]   = useState(false);
+      const [showConfetti, setShowConfetti]  = useState(false);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [accessibilityFilter, setAccessibilityFilter] = useState(false);
+      const [tab, setTab] = useState('zones');
+      const [refreshing, setRefreshing] = useState(false);
+
+      // ── user / wallet / sessions ──────────────────────────────
+      const USER = { name:'Mustafa M.', initial:'M', phone:'+994 50 *** ** 21' };
+      const [balance, setBalance] = useState(25.00);
+      const [userCar, setUserCar] = useState('99-AA-999');
+      const [activeSession, setActiveSession] = useState(null);
+      const [parkingHistory, setParkingHistory] = useState([
+        { id:'h1', zoneName:'Atatürk pr. - Mərkəzi xətt',     slotNumber:31, date:'24 apr 2026', duration:'1 saat', totalAZN:1.00 },
+        { id:'h2', zoneName:'Fəvvarələr Meydanı - Nizami küç.', slotNumber:7,  date:'21 apr 2026', duration:'2 saat', totalAZN:3.00 },
+        { id:'h3', zoneName:'Sahil Bulvarı - Mərkəzi giriş',  slotNumber:14, date:'18 apr 2026', duration:'30 dəq', totalAZN:0.50 },
+      ]);
+      const [toast, setToast] = useState(null);
+      const showToast = useCallback((msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 2200);
+      }, []);
+
+      // ── live user location (geolocation watch) ──────────────────
+      const [userLocation, setUserLocation] = useState(null);
+      const [geoError, setGeoError] = useState(null);
+      useEffect(() => {
+        if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+          setGeoError('unsupported');
+          return;
+        }
+        const watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            setUserLocation({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              ts: pos.timestamp,
+            });
+            setGeoError(null);
+          },
+          (err) => {
+            setGeoError(err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'error');
+          },
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+        return () => { try { navigator.geolocation.clearWatch(watchId); } catch(_) {} };
+      }, []);
+
+      // ── snap slot coordinates to real OSM road geometry ────────
+      // Runs once at mount with limited concurrency so Overpass doesn't
+      // rate-limit us when there are many zones across the city.
+      // Updates are flushed per-batch so the user sees pins snap into
+      // place progressively rather than waiting for the whole city.
+      useEffect(() => {
+        let cancelled = false;
+        const CONCURRENCY = 3;
+        (async () => {
+          const queue = [...MOCK_ZONES];
+          async function worker() {
+            while (!cancelled && queue.length) {
+              const z = queue.shift();
+              const road = await fetchRoadForZone(z);
+              if (cancelled || !road) continue;
+              const positions = placeSlotsAlongRoad(road, z.coordinates, z.visualSlots);
+              if (!positions) continue;
+              setZoneSlots((prev) => {
+                if (!prev[z.id]) return prev;
+                return {
+                  ...prev,
+                  [z.id]: prev[z.id].map((s, i) =>
+                    positions[i] ? { ...s, coordinates: positions[i] } : s
+                  ),
+                };
+              });
+            }
+          }
+          await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+        })();
+        return () => { cancelled = true; };
+      }, []);
+
+      // Bottom-nav highlight is derived directly from the current view.
+      const activeNav = (
+        view === 'home' || view === 'zone_detail' ? 'parking'
+        : view === 'vaxt'   ? 'vaxt'
+        : view === 'xerite' ? 'xerite'
+        : view === 'diger'  ? 'diger'
+        : view === 'profil' ? 'profil'
+        : 'parking'
+      );
+
+      useEffect(() => {
+        if (view !== 'home' || aiRec) return;
+        let cancelled = false;
+        setAiLoading(true);
+        fetchAIRecommendation().then(rec => {
+          if (!cancelled) { setAiRec(rec); setAiLoading(false); }
+        });
+        return () => { cancelled = true; };
+      }, [view, aiRec]);
+
+      const selectedZone = useMemo(() => MOCK_ZONES.find(z => z.id === selectedZoneId) || null, [selectedZoneId]);
+      const slotsForZone = selectedZoneId ? zoneSlots[selectedZoneId] : [];
+      const selectedSlot = useMemo(() => slotsForZone?.find(s => s.id === selectedSlotId) || null, [slotsForZone, selectedSlotId]);
+
+      // Closest available slot across all zones, relative to user.
+      const nearestAvailableSlot = useMemo(() => {
+        if (!userLocation) return null;
+        let best = null, bestDist = Infinity;
+        for (const z of MOCK_ZONES) {
+          const list = zoneSlots[z.id] || [];
+          for (const s of list) {
+            if (s.status !== 'available') continue;
+            const d = haversineM(userLocation, s.coordinates);
+            if (d < bestDist) { bestDist = d; best = { slot: s, zone: z, distance: d }; }
+          }
+        }
+        return best;
+      }, [userLocation, zoneSlots]);
+
+      const handleZoneSelect = useCallback((zoneId) => {
+        setSelectedZoneId(zoneId); setSelectedSlotId(null);
+        setView('zone_detail');
+      }, []);
+
+      const handleAIGo = useCallback(() => {
+        if (!aiRec) return;
+        setSelectedZoneId(aiRec.recommendedZoneId);
+        setSelectedSlotId(aiRec.recommendedSlotId);
+        setView('zone_detail');
+      }, [aiRec]);
+
+      const handleSelectSlot = useCallback((slot) => {
+        if (!slot || slot.status !== 'available') return;
+        setSelectedSlotId(slot.id);
+      }, []);
+
+      const handleRefresh = useCallback(() => {
+        if (!selectedZone) return;
+        setRefreshing(true);
+        setTimeout(() => {
+          setZoneSlots(prev => ({ ...prev, [selectedZone.id]: refreshSlots(selectedZone) }));
+          setSelectedSlotId(null);
+          setRefreshing(false);
+        }, 600);
+      }, [selectedZone]);
+
+      const handleBack = useCallback(() => { setView('home'); }, []);
+
+      // Park Et tapped on the zone-detail screen → open payment sheet.
+      const handleOpenPayment = useCallback(() => {
+        if (!selectedSlot) return;
+        setPaymentOpen(true);
+      }, [selectedSlot]);
+
+      // Təsdiq edin tapped inside the payment modal → confirm + park.
+      const handleConfirmPayment = useCallback((details) => {
+        if (!selectedZone || !selectedSlot) return;
+        setShowConfetti(true);
+
+        // Mark the slot as occupied on the live board.
+        setZoneSlots(prev => ({
+          ...prev,
+          [selectedZone.id]: prev[selectedZone.id].map(s =>
+            s.id === selectedSlot.id ? { ...s, status:'occupied' } : s),
+        }));
+
+        // Persist car plate & deduct wallet balance when applicable.
+        if (details.carPlate && details.carPlate !== 'GUEST') setUserCar(details.carPlate);
+        if (details.payMethod === 'wallet' && details.totalAZN > 0) {
+          setBalance(b => Math.max(0, +(b - details.totalAZN).toFixed(2)));
+        }
+
+        // Create / replace the active session.
+        const dur = DURATIONS.find(d => d.id === details.durationId) || DURATIONS[1];
+        const now = new Date();
+        const startedLabel = now.toLocaleTimeString('az-AZ', { hour:'2-digit', minute:'2-digit' });
+        setActiveSession({
+          id: 'sess-' + now.getTime(),
+          zoneId: selectedZone.id,
+          zoneName: selectedZone.name,
+          slotNumber: selectedSlot.slotNumber,
+          carPlate: details.carPlate || userCar,
+          payMethod: details.payMethod,
+          payTiming: details.payTiming,
+          totalAZN: details.totalAZN || 0,
+          durationLabel: dur.label,
+          durationMinutes: dur.minutes,
+          startedAt: now.toISOString(),
+          startedLabel,
+        });
+
+        setTimeout(() => {
+          setPaymentOpen(false);
+          setProximityOpen(false);
+          setSelectedSlotId(null);
+          showToast('Parklanma təsdiq edildi ✅');
+        }, 1100);
+        setTimeout(() => setShowConfetti(false), 3200);
+      }, [selectedZone, selectedSlot, userCar, showToast]);
+
+      // Bottom-nav tap → switch top-level view.
+      const handleNavChange = useCallback((id) => {
+        if (id === 'parking') setView('home');
+        else if (id === 'vaxt')   setView('vaxt');
+        else if (id === 'xerite') setView('xerite');
+        else if (id === 'diger')  setView('diger');
+        else if (id === 'profil') setView('profil');
+      }, []);
+
+      // ── Vaxt screen handlers ────────────────────────────────
+      const handleEndSession = useCallback(() => {
+        if (!activeSession) return;
+        // Re-open the slot we were occupying.
+        setZoneSlots(prev => {
+          const list = prev[activeSession.zoneId];
+          if (!list) return prev;
+          return {
+            ...prev,
+            [activeSession.zoneId]: list.map(s =>
+              s.slotNumber === activeSession.slotNumber ? { ...s, status:'available' } : s),
+          };
+        });
+        // Push to history.
+        setParkingHistory(h => [{
+          id: activeSession.id,
+          zoneName: activeSession.zoneName,
+          slotNumber: activeSession.slotNumber,
+          date: new Date().toLocaleDateString('az-AZ', { day:'2-digit', month:'short', year:'numeric' }),
+          duration: activeSession.durationLabel,
+          totalAZN: activeSession.totalAZN,
+        }, ...h].slice(0, 12));
+        setActiveSession(null);
+        showToast('Sessiya bitirildi');
+      }, [activeSession, showToast]);
+
+      // ── Profile / More handlers ────────────────────────────
+      const handleTopUp = useCallback(() => {
+        setBalance(b => +(b + 10).toFixed(2));
+        showToast('+10 AZN balansa əlavə olundu');
+      }, [showToast]);
+      const handleAddCar = useCallback(() => {
+        const next = window.prompt('Avtomobil nömrəsini daxil edin:', userCar || '');
+        if (next && next.trim()) {
+          setUserCar(next.trim().toUpperCase());
+          showToast('Avtomobil yeniləndi');
+        }
+      }, [userCar, showToast]);
+      const handleLogout = useCallback(() => {
+        showToast('Demo rejimində çıxış deaktivdir');
+      }, [showToast]);
+      const handleMoreAction = useCallback((item) => {
+        showToast(item.label + ' — demo rejimində');
+      }, [showToast]);
+
+      // The proximity modal's "PARK ET" CTA → close proximity, open payment.
+      const handlePark = useCallback(() => {
+        setProximityOpen(false);
+        if (selectedSlot) setPaymentOpen(true);
+      }, [selectedSlot]);
+
+      return (
+        <PhoneShell>
+          {view === 'splash' && <SplashScreen onDone={() => setView('home')}/>}
+          {view === 'home' && (
+            <HomeScreen
+              zones={MOCK_ZONES}
+              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+              accessibilityFilter={accessibilityFilter} setAccessibilityFilter={setAccessibilityFilter}
+              tab={tab} setTab={setTab}
+              aiRec={aiRec} aiLoading={aiLoading}
+              onZoneSelect={handleZoneSelect} onAIGo={handleAIGo}/>
+          )}
+          {view === 'zone_detail' && selectedZone && (
+            <ZoneDetailScreen
+              zone={selectedZone} slots={slotsForZone} selectedSlot={selectedSlot}
+              onBack={handleBack} onSelectSlot={handleSelectSlot}
+              onRefresh={handleRefresh}
+              onProximity={() => setProximityOpen(true)}
+              onPark={handleOpenPayment}
+              refreshing={refreshing}
+              userLocation={userLocation}
+              nearestSlot={nearestAvailableSlot}/>
+          )}
+          {view === 'vaxt' && (
+            <HistoryScreen
+              activeSession={activeSession}
+              history={parkingHistory}
+              onEndSession={handleEndSession}
+              onPickZone={() => setView('home')}/>
+          )}
+          {view === 'xerite' && (
+            <FullMapScreen
+              zones={MOCK_ZONES}
+              onSelectZone={handleZoneSelect}
+              userLocation={userLocation}
+              nearestSlot={nearestAvailableSlot}/>
+          )}
+          {view === 'diger' && (
+            <MoreScreen onAction={handleMoreAction}/>
+          )}
+          {view === 'profil' && (
+            <ProfileScreen
+              user={USER} balance={balance} userCar={userCar}
+              onTopUp={handleTopUp} onAddCar={handleAddCar} onLogout={handleLogout}/>
+          )}
+          {view !== 'splash' && (
+            <BottomNav active={activeNav} onChange={handleNavChange}/>
+          )}
+          {proximityOpen && selectedZone && selectedSlot && (
+            <ProximityModal
+              zone={selectedZone} slots={slotsForZone} selectedSlot={selectedSlot}
+              onClose={() => setProximityOpen(false)} onPark={handlePark}/>
+          )}
+          {paymentOpen && selectedZone && selectedSlot && (
+            <PaymentModal
+              zone={selectedZone} slot={selectedSlot}
+              balance={balance}
+              onClose={() => setPaymentOpen(false)}
+              onConfirm={handleConfirmPayment}/>
+          )}
+          {showConfetti && <Confetti/>}
+          {toast && (
+            <div className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[400] animate-fade-in pointer-events-none">
+              <div className="bg-az-ink text-white text-[12px] font-display font-bold px-4 py-2.5 rounded-full shadow-lg shadow-black/20">
+                {toast}
+              </div>
+            </div>
+          )}
+        </PhoneShell>
+      );
+    }
+
+    // ── BOOTSTRAP ──────────────────────────────────────────────────
+    try {
+      const root = createRoot(document.getElementById('root'));
+      root.render(<App/>);
+      // hide pre-loader once React mounts
+      const pl = document.getElementById('pre-loader');
+      if (pl) pl.style.display = 'none';
+    } catch (bootErr) {
+      const ov = document.getElementById('err-overlay');
+      const pl = document.getElementById('pre-loader');
+      if (pl) pl.style.display = 'none';
+      if (ov) {
+        ov.style.display = 'block';
+        ov.textContent =
+          '── BOOTSTRAP CRASH ─────────────\n' +
+          (bootErr && (bootErr.message || String(bootErr))) +
+          (bootErr && bootErr.stack ? '\n\n' + bootErr.stack : '');
+      }
+      throw bootErr;
+    }
+  </script>
+</body>
+</html>
