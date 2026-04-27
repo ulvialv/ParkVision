@@ -48,29 +48,4 @@ npm run build
 npm run preview
 ```
 
-## 🚢 Deploy (Hackathon — TAM ISLEK VERSIYA)
-
-> **Vacib:** Kanonik versiya `standalone.html`-dadir (CDN ile React+Babel+Tailwind+Leaflet yukleyir, build telebatsizdir). Bu repodaki `vercel.json`, `netlify.toml`, `render.yaml` standalone.html-i kok URL kimi serve edir.
-
-### Vercel (en suretli)
-1. https://vercel.com/new → GitHub repo `Fegann/ParkVision` sec
-2. Framework Preset: **Other** (avto-detect olunur)
-3. Build/Output ayarlarini DEYISME — `vercel.json` hamisini hell edir
-4. **Deploy** dugmesi → 30 saniyeye canli
-
-### Netlify
-1. https://app.netlify.com/start → GitHub repo `Fegann/ParkVision` sec
-2. Build settings avto-detect olunur (`netlify.toml`-dan)
-3. **Deploy site** → bitdi
-
-### Render
-1. https://dashboard.render.com → New → **Static Site** → GitHub repo
-2. `render.yaml` Blueprint kimi taninir
-3. **Apply** → deploy
-
-### Build necə işləyir (3-ü də)
-```bash
-mkdir -p public && cp standalone.html public/index.html
-# publish: ./public
-```
 Yəni hostluq `public/index.html`-i kök URL kimi serve edir, o da `standalone.html`-in tam surətidir.
